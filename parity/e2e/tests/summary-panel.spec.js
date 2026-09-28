@@ -5,6 +5,7 @@ const { resetAndOpen, summaryRegion, stat } = require('./helpers');
 test.describe('SummaryPanel @SummaryPanel', () => {
   test.beforeEach(async ({ page, request }) => {
     await resetAndOpen(page, request);
+    await expect(stat(page, 'Total spent')).toBeVisible();
   });
 
   test('shows total, count and average expense', async ({ page }) => {

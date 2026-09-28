@@ -323,7 +323,8 @@ def plan_markdown(plan: dict) -> str:
         deps = ", ".join(u["depends_on"]) or "-"
         tests = f"`@{u['name']}`" if u["kind"] != "factory" else "build check"
         lines.append(f"| {i} | {u['name']} | {u['kind']} `{u['angular_name']}` | {deps} | {len(u['behaviour_notes'])} | {tests} |")
-    lines += ["", "### Behaviours to preserve", ""]
+    lines += ["", "After the last unit, the `@integration` browser tests check that the units still refresh each other "
+              "(add or delete an expense → list and summary update).", "", "### Behaviours to preserve", ""]
     for u in f["units"]:
         if u["behaviour_notes"]:
             lines.append(f"**{u['name']}**")

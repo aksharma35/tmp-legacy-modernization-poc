@@ -1,12 +1,16 @@
 // Shared helpers. Everything is located by what a user sees: region labels,
 // form labels, table rows and text. No framework-specific selectors.
+//
+// Each spec file checks ONE unit and only waits for that unit to render, so a
+// unit can be migrated and verified on its own. Cross-unit behaviour (adding an
+// expense refreshes the list AND the summary) lives in integration.spec.js.
 const { expect } = require('@playwright/test');
 
 async function resetAndOpen(page, request) {
   const res = await request.post('/api/test/reset');
   expect(res.status(), 'test reset hook').toBe(204);
   await page.goto('/');
-  await expect(expenseRows(page)).toHaveCount(11);
+  await expect(page.getByRole('heading', { level: 1, name: 'Expense Tracker' })).toBeVisible();
 }
 
 function expensesRegion(page) {

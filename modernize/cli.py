@@ -9,7 +9,7 @@ import typer
 
 from . import decisions, gitutil, procs, testing
 from .config import Config
-from .ui import console, fail, info, ok, step, table
+from .ui import fail, info, ok, step, table
 
 app = typer.Typer(
     add_completion=False,
@@ -36,7 +36,14 @@ def setup() -> None:
         raise SystemExit("npm/npx not found. Install Node.js 22 LTS first.")
     subprocess.run([npm, "install", "--no-audit", "--no-fund"], cwd=e2e, check=True)
     subprocess.run([npx, "playwright", "install", "chromium"], cwd=e2e, check=True)
-    ok("Browser tests installed. Next: modernize doctor")
+    ok("Browser tests installed.")
+    import os
+
+    if not os.environ.get("MODERNIZE_LEGACY_API_START") and shutil.which("docker"):
+        info("Building the Python 2.7 image for the legacy API (first time only)…")
+        if subprocess.run(["docker", "compose", "build", "legacy-api"], cwd=cfg.root).returncode == 0:
+            ok("Legacy API image built.")
+    ok("Next: modernize doctor")
 
 
 @app.command()
@@ -158,6 +165,22 @@ def up(target: str = typer.Argument("legacy", help="legacy, modern or hybrid")) 
     cfg = Config()
     procs.ensure_target(cfg, target)
     ok(f"{target}: {cfg.target(target).web_url}")
+
+
+@app.command()
+def clean() -> None:
+    """Stop services and delete generated files that git does not track (use between rehearsal takes)."""
+    cfg = Config()
+    procs.stop_all(cfg)
+    removed = []
+    if (cfg.root / "out").exists():
+        shutil.rmtree(cfg.root / "out")
+        removed.append("out/")
+    tracked = subprocess.run(["git", "ls-files", "modern"], cwd=cfg.root, capture_output=True, text=True).stdout.strip()
+    if (cfg.root / "modern").exists() and not tracked:
+        shutil.rmtree(cfg.root / "modern")
+        removed.append("modern/")
+    ok("Clean. Removed: " + (", ".join(removed) if removed else "nothing"))
 
 
 @app.command()

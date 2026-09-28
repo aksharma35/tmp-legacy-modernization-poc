@@ -5,14 +5,13 @@ import json
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 import yaml
 
 from . import ai, gitutil, testing
 from .config import Config
 from .discover import _tool
-from .ui import console, fail, info, ok, step, table, warn
+from .ui import fail, info, ok, step, table, warn
 
 
 def load_recipe(cfg: Config, name: str) -> dict:
@@ -52,9 +51,10 @@ def transform_backend(cfg: Config, recipe: dict, use_ai: bool = True, force: boo
     src, dst = cfg.root / recipe["source"], cfg.root / recipe["target"]
 
     step(f"Transform · {recipe['title']}", "Codemods first, then the AI for what they leave behind")
-    if dst.exists():
+    if (dst / "app.py").exists():
         if not force:
             raise SystemExit(f"{recipe['target']} already exists. Use --force to start over.")
+    if dst.exists():
         shutil.rmtree(dst)
 
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
@@ -116,7 +116,8 @@ def scaffold_frontend(cfg: Config, recipe: dict) -> None:
     dst = cfg.root / recipe["target"]
     if (dst / "package.json").exists():
         return
-    shutil.copytree(cfg.root / sc["template"], dst, ignore=shutil.ignore_patterns("node_modules", "dist", "dist-bridge"))
+    shutil.copytree(cfg.root / sc["template"], dst, ignore=shutil.ignore_patterns("node_modules", "dist", "dist-bridge"),
+                    dirs_exist_ok=True)
     for c in sc.get("copy", []):
         shutil.copy2(cfg.root / c["from"], dst / c["to"])
     info("Installing React dependencies (npm install)…")

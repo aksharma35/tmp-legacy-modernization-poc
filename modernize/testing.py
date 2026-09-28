@@ -22,7 +22,7 @@ def _npm(cmd: str) -> str:
 
 # ---------------------------------------------------------------- API parity
 
-def run_api(cfg: Config, target: str, record: bool = False, quiet: bool = False) -> dict:
+def run_api(cfg: Config, target: str, record: bool = False, quiet: bool = False, show: bool = True) -> dict:
     procs.ensure_target(cfg, target, restart_backend=True, api_only=True)
     out_dir = cfg.out / "parity" / ("lock" if record else target)
     env = {
@@ -38,7 +38,10 @@ def run_api(cfg: Config, target: str, record: bool = False, quiet: bool = False)
     args = [sys.executable, "-m", "pytest", "parity/api", "-p", "no:cacheprovider", "-q"]
     if quiet:
         args += ["--no-header", "-rN", "--tb=line"]
-    proc = subprocess.run(args, cwd=cfg.root, env=env)
+    if show:
+        proc = subprocess.run(args, cwd=cfg.root, env=env)
+    else:
+        proc = subprocess.run(args, cwd=cfg.root, env=env, capture_output=True, text=True, encoding="utf-8")
     results_file = out_dir / "api-results.json"
     results = json.loads(results_file.read_text(encoding="utf-8")) if results_file.exists() else {"passed": [], "failed": [], "diffs": []}
     results["ok"] = proc.returncode == 0

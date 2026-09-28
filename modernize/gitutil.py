@@ -35,13 +35,16 @@ def user_name(root: Path) -> str:
     return _git(root, "config", "user.name", check=False).stdout.strip() or os.environ.get("USER", "reviewer")
 
 
+LOCKFILES = ("package-lock.json", "yarn.lock", "pnpm-lock.yaml")
+
+
 def numstat(root: Path, sha: str) -> tuple[int, int, int]:
-    """(files, added, removed) for one commit."""
+    """(files, added, removed) for one commit, ignoring generated lockfiles."""
     out = _git(root, "show", "--numstat", "--format=", sha, check=False).stdout
     files = added = removed = 0
     for line in out.splitlines():
         parts = line.split("\t")
-        if len(parts) == 3:
+        if len(parts) == 3 and not parts[2].endswith(LOCKFILES):
             files += 1
             added += int(parts[0]) if parts[0].isdigit() else 0
             removed += int(parts[1]) if parts[1].isdigit() else 0
@@ -50,9 +53,10 @@ def numstat(root: Path, sha: str) -> tuple[int, int, int]:
 
 def log(root: Path, *paths: str) -> list[dict]:
     """Commits touching `paths`, oldest first: sha, author, subject."""
-    out = _git(root, "log", "--reverse", "--format=%h\t%an\t%s", "--", *paths, check=False).stdout
+    fmt = "%h%x09%an%x09%s%x09%(trailers:key=Co-authored-by,valueonly,separator=%x2C)"
+    out = _git(root, "log", "--reverse", f"--format={fmt}", "--", *paths, check=False).stdout
     rows = []
     for line in out.splitlines():
-        sha, author, subject = (line.split("\t", 2) + ["", ""])[:3]
-        rows.append({"sha": sha, "author": author, "subject": subject})
+        sha, author, subject, coauthors = (line.split("\t", 3) + ["", "", ""])[:4]
+        rows.append({"sha": sha, "author": author, "subject": subject, "coauthors": coauthors})
     return rows

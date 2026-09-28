@@ -57,7 +57,7 @@ def _apply_accept(cfg: Config, diffs: list[dict]) -> None:
 
 def verify_api(cfg: Config, target: str = "modern", use_ai: bool = True, decide: str | None = None) -> bool:
     step("Verify · API parity", "The same recorded requests, replayed against the new backend")
-    res = testing.run_api(cfg, target, quiet=True)
+    res = testing.run_api(cfg, target, quiet=True, show=False)
     if res["ok"]:
         ok(f"All {len(res['passed'])} API cases return exactly what the legacy API returned.")
         return True
@@ -105,10 +105,13 @@ def verify_api(cfg: Config, target: str = "modern", use_ai: bool = True, decide:
             "field": sig,
             "values_changed": len(ds),
             "example": {"case": ds[0]["case"], "legacy": ds[0]["legacy"], "new": ds[0]["modern"]},
-            "ai_explanation": explanation or None,
             "decision": choice,
             "decided_by": reviewer,
             "at": decisions.now(),
+        })
+    if explanation:
+        data.setdefault("ai_explanations", []).append({
+            "at": decisions.now(), "model": cfg.model, "fields": list(groups), "text": explanation,
         })
     decisions.save(cfg, data)
 
@@ -126,7 +129,9 @@ def verify_api(cfg: Config, target: str = "modern", use_ai: bool = True, decide:
         message = (
             "A reviewer decided to KEEP the legacy behaviour for these API fields. The legacy values are the expected ones:\n"
             + _describe({s: groups[s] for s in keep}) + "\n\n"
-            "Change modern/backend/app.py so these responses match the legacy values exactly, on Python 3.12. "
+            + ("The reviewer ACCEPTED the new Python 3 behaviour for these fields, so they must stay as they are now:\n"
+               + _describe({s: groups[s] for s in accept}) + "\n\n" if accept else "")
+            + "Change modern/backend/app.py so the kept fields match the legacy values exactly, on Python 3.12. "
             "Replace each related `MODERNIZE-REVIEW:` comment with a one-line comment that says the legacy Python 2 "
             "behaviour was kept on purpose (decision recorded in migration/decisions.yaml). Change nothing else."
         )
@@ -134,7 +139,7 @@ def verify_api(cfg: Config, target: str = "modern", use_ai: bool = True, decide:
         ai.run(cfg, message, edit=["modern/backend/app.py"], read=["legacy/backend/app.py", "CONVENTIONS.md"],
                test_cmd=f'"{sys.executable}" -m modernize test api --target {target}')
 
-    final = testing.run_api(cfg, target, quiet=True)
+    final = testing.run_api(cfg, target, quiet=True, show=False)
     (ok if final["ok"] else fail)(
         "API parity: the new backend now matches the contract." if final["ok"] else "API parity still fails."
     )

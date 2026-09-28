@@ -73,7 +73,8 @@ def ask(cfg: Config, question: str, read: list[str]) -> str:
     args = _base_args(cfg) + ["--chat-mode", "ask", "--no-auto-commits", "--no-dirty-commits", "--message", question]
     for r in read:
         args += ["--read", r]
-    proc = subprocess.run(args, cwd=cfg.root, capture_output=True, text=True, encoding="utf-8")
+    env = {**os.environ, "COLUMNS": "10000"}  # no hard line wraps in the captured answer
+    proc = subprocess.run(args, cwd=cfg.root, capture_output=True, text=True, encoding="utf-8", env=env)
     if proc.returncode != 0:
         raise RuntimeError(f"Aider failed ({proc.returncode}):\n{(proc.stderr or proc.stdout)[-1500:]}")
     lines = [ln for ln in proc.stdout.splitlines() if not _HEADER.match(ln.strip())]

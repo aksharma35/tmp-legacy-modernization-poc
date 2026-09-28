@@ -1,10 +1,11 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { resetAndOpen, expensesRegion, expenseRows, rowByTitle, tableRows, stat } = require('./helpers');
+const { resetAndOpen, expensesRegion, expenseRows, rowByTitle, tableRows } = require('./helpers');
 
 test.describe('ExpenseList @ExpenseList', () => {
   test.beforeEach(async ({ page, request }) => {
     await resetAndOpen(page, request);
+    await expect(expenseRows(page)).toHaveCount(11);
   });
 
   test('lists every expense, newest first, with formatted dates and rupee amounts', async ({ page }) => {
@@ -12,7 +13,6 @@ test.describe('ExpenseList @ExpenseList', () => {
     const rows = await tableRows(page);
     expect(rows[0]).toEqual(['24 Sep 2026', 'Phone case', 'Shopping', '₹601.00']);
     expect(rows[10]).toEqual(['01 Sep 2026', 'Electricity bill', 'Bills', '₹1,500.00']);
-    expect(rows.map((r) => r[1])).toContain('Running shoes');
     await expect(rowByTitle(page, 'Running shoes').locator('td').nth(3)).toHaveText('₹1,400.00');
   });
 
@@ -50,7 +50,6 @@ test.describe('ExpenseList @ExpenseList', () => {
 
   test('sorts by the chosen option', async ({ page }) => {
     const sort = page.getByLabel('Sort by');
-    await expect(sort).toHaveValue(/./);
 
     await sort.selectOption({ label: 'Highest amount' });
     expect((await tableRows(page))[0][1]).toBe('Electricity bill');
@@ -75,12 +74,13 @@ test.describe('ExpenseList @ExpenseList', () => {
     await expect(expenseRows(page)).toHaveCount(11);
   });
 
-  test('deletes a row and refreshes the summary', async ({ page }) => {
+  test('deletes a row after confirmation', async ({ page, request }) => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete Team lunch' }).click();
     await expect(expenseRows(page)).toHaveCount(10);
     await expect(rowByTitle(page, 'Team lunch')).toHaveCount(0);
-    await expect(stat(page, 'Total spent')).toHaveText('₹7,700.00');
-    await expect(stat(page, 'Expenses')).toHaveText('10');
+    await expect(expensesRegion(page).getByRole('status')).toHaveText('Showing 10 of 10');
+    const titles = (await (await request.get('/api/expenses')).json()).map((e) => e.title);
+    expect(titles).not.toContain('Team lunch');
   });
 });

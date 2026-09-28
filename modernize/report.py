@@ -4,7 +4,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import re
 from pathlib import Path
 
 from . import apicases, decisions, gitutil
@@ -42,7 +41,7 @@ def backend_coverage(cfg: Config) -> dict | None:
 
 
 def _classify(commit: dict) -> str:
-    if commit["author"].endswith("(aider)"):
+    if commit["author"].endswith("(aider)") or "aider" in commit.get("coauthors", "").lower():
         return "AI (Aider)"
     if commit["subject"].startswith("modernize: codemod"):
         return "Codemod"
@@ -130,7 +129,7 @@ def build_report(cfg: Config) -> Path:
             ex = ch["example"]
             L.append(f"| `{ch['field']}` | {ex['legacy']} | {ex['new']} | **{ch['decision']}** | {ch['decided_by']} |")
         L.append("")
-        expl = next((c["ai_explanation"] for c in changes if c.get("ai_explanation")), None)
+        expl = "\n\n".join(e["text"] for e in dec.get("ai_explanations") or [])
         if expl:
             L += ["AI explanation shown to the reviewer at decision time:", "", *[f"> {ln}" if ln else ">" for ln in expl.splitlines()], ""]
 

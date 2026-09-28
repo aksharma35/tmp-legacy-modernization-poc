@@ -72,7 +72,7 @@ def start(cfg: Config, name: str, timeout: float = 120) -> None:
 
     if svc.detached:
         subprocess.run(argv, cwd=cwd, env=env, check=True)
-        _wait_ready(cfg, svc, None, timeout)
+        _wait_ready(cfg, svc, None, max(timeout, 300))  # first Docker build can be slow
         return
 
     log = open(log_file(cfg, name), "w", encoding="utf-8")
