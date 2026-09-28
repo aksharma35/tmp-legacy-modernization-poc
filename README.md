@@ -110,9 +110,10 @@ Useful extras:
 
 The AI's output differs from run to run; the tests don't. If a unit keeps failing after Aider's
 retries, re-run that unit with `--unit`. You can also compare with the branch
-**`reference-run`**, which holds a complete run of every step. Its tags are `step-1-discover`,
-`step-2-lock`, `step-3-upgrade`, `step-4-verify-api`, `step-5-migrate` and `step-8-report`
-(steps 6 and 7 only run tests, so they add no commits).
+**`reference-run`**, which holds a complete run of every step, one commit per step.
+`git log --oneline main..origin/reference-run` lists them. Pipeline and codemod commits start
+with `modernize:`, and AI commits carry `Co-authored-by: aider`. Steps 6 and 7 only run tests,
+so they add no commits.
 
 Be clear about how `reference-run` was made. The repo was built in a sandbox without an API key,
 so the AI edits on that branch were **written by Claude during the build session** and applied
