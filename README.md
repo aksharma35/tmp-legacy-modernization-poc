@@ -60,8 +60,8 @@ uv tool install --python 3.12 aider-chat
 
 export ANTHROPIC_API_KEY=sk-ant-...        # or put it in your shell profile
 
-modernize setup     # Playwright + Chromium, and builds the Python 2.7 Docker image
-modernize doctor    # every line should be ✔
+modernize setup       # Playwright + Chromium, and builds the Python 2.7 Docker image
+modernize doctor --ai # every line should be ✔ (--ai makes one tiny real call to Claude)
 ```
 
 The default model is `anthropic/claude-sonnet-5`. To use another one:
@@ -110,8 +110,9 @@ Useful extras:
 
 The AI's output differs from run to run; the tests don't. If a unit keeps failing after Aider's
 retries, re-run that unit with `--unit`. You can also compare with the branch
-**`reference-run`**, which holds a complete run of every step, tagged `step-1-discover` …
-`step-8-report`.
+**`reference-run`**, which holds a complete run of every step. Its tags are `step-1-discover`,
+`step-2-lock`, `step-3-upgrade`, `step-4-verify-api`, `step-5-migrate` and `step-8-report`
+(steps 6 and 7 only run tests, so they add no commits).
 
 Be clear about how `reference-run` was made. The repo was built in a sandbox without an API key,
 so the AI edits on that branch were **written by Claude during the build session** and applied
