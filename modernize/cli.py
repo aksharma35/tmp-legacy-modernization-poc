@@ -47,11 +47,11 @@ def setup() -> None:
 
 
 @app.command()
-def doctor() -> None:
+def doctor(ai: bool = typer.Option(False, "--ai", help="Also make one tiny live call to the AI model.")) -> None:
     """Check every prerequisite (runtimes, tools, API key, ports)."""
     from .doctor import doctor as run_doctor
 
-    _exit(run_doctor(Config()))
+    _exit(run_doctor(Config(), live=ai))
 
 
 @app.command()

@@ -29,7 +29,18 @@ def _version(text: str) -> tuple[int, ...]:
     return tuple(int(x) for x in m.groups() if x) if m else (0,)
 
 
-def doctor(cfg: Config) -> bool:
+def live_ai_check(cfg: Config) -> tuple[bool, str]:
+    """One tiny real request through Aider to the configured model (costs a fraction of a cent)."""
+    from . import ai
+
+    try:
+        answer = ai.ask(cfg, "Reply with exactly one word: ready", read=[])
+    except (RuntimeError, SystemExit) as exc:
+        return False, str(exc).strip().splitlines()[-1][:120] if str(exc).strip() else "failed"
+    return "ready" in answer.lower(), (answer.strip().splitlines() or ["(empty answer)"])[-1][:80]
+
+
+def doctor(cfg: Config, live: bool = False) -> bool:
     rows: list[list[str]] = []
     good = True
 
@@ -79,6 +90,9 @@ def doctor(cfg: Config) -> bool:
         check("ANTHROPIC_API_KEY", bool(key), f"set (…{key[-4:]})" if key else "not set",
               "export ANTHROPIC_API_KEY=sk-ant-…  (use a key with a low spend limit)")
     check("AI model", True, cfg.model)
+    if live:
+        passed, detail = live_ai_check(cfg)
+        check("Live AI call (Aider → model)", passed, detail, "Check the API key, its spend limit and the model name")
 
     for name, svc in cfg.services.items():
         port = re.search(r":(\d+)/", svc.ready_url).group(1)
