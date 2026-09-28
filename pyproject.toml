@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-modernize = "modernize.cli:app"
+modernize = "modernize.cli:main"
 
 [build-system]
 requires = ["setuptools>=69"]

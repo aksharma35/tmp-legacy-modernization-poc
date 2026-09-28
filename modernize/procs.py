@@ -137,8 +137,10 @@ def ensure(cfg: Config, name: str, restart: bool = False) -> None:
     start(cfg, name)
 
 
-def ensure_target(cfg: Config, target: str, restart_backend: bool = False) -> None:
+def ensure_target(cfg: Config, target: str, restart_backend: bool = False, api_only: bool = False) -> None:
     for name in cfg.target(target).services:
+        if api_only and not name.endswith("-api"):
+            continue
         ensure(cfg, name, restart=restart_backend and name == "modern-api")
 
 

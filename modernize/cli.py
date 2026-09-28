@@ -15,6 +15,7 @@ app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
     rich_markup_mode="rich",
+    pretty_exceptions_enable=False,
     help="Legacy modernization pipeline: open-source tools do the bulk, AI fills the gaps, parity tests decide.",
 )
 test_app = typer.Typer(no_args_is_help=True, help="Run one check. Aider uses these as its --test-cmd.")
@@ -194,5 +195,14 @@ def test_build() -> None:
     _exit(testing.run_build(Config()))
 
 
+def main() -> None:
+    """Console entry point: show pipeline errors as one clear line instead of a traceback."""
+    try:
+        app()
+    except RuntimeError as exc:
+        fail(str(exc))
+        raise SystemExit(1)
+
+
 if __name__ == "__main__":
-    app()
+    main()

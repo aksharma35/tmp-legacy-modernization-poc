@@ -23,7 +23,7 @@ def _npm(cmd: str) -> str:
 # ---------------------------------------------------------------- API parity
 
 def run_api(cfg: Config, target: str, record: bool = False, quiet: bool = False) -> dict:
-    procs.ensure_target(cfg, target, restart_backend=True)
+    procs.ensure_target(cfg, target, restart_backend=True, api_only=True)
     out_dir = cfg.out / "parity" / ("lock" if record else target)
     env = {
         **os.environ,
@@ -49,7 +49,12 @@ def run_api(cfg: Config, target: str, record: bool = False, quiet: bool = False)
 
 def run_smoke(cfg: Config, target: str) -> bool:
     """Replay every recorded request; fail on crashes and 5xx. Shows the server log on failure."""
-    procs.ensure_target(cfg, target, restart_backend=True)
+    try:
+        procs.ensure_target(cfg, target, restart_backend=True, api_only=True)
+    except RuntimeError as exc:  # the server did not even start: show why
+        fail(f"Smoke test: the '{target}' backend did not start.")
+        console.print(str(exc), markup=False)
+        return False
     cases = apicases.load_cases(cfg.root / "parity" / "api" / "cases.yaml")
     send = apicases.requests_sender(cfg.target(target).api_url)
     problems = []
@@ -68,9 +73,23 @@ def run_smoke(cfg: Config, target: str) -> bool:
         console.print(f"  - {p}")
     backend = next((s for s in cfg.target(target).services if s.endswith("-api")), None)
     if backend:
-        console.print(f"\n--- {backend} server log (last lines) ---")
-        console.print(procs.log_tail(cfg, backend, 30), markup=False)
+        console.print(f"\n--- {backend}: last error in the server log ---")
+        console.print(last_traceback(procs.log_tail(cfg, backend, 400)), markup=False)
     return False
+
+
+def last_traceback(log: str) -> str:
+    """The last Python traceback in a server log (what the AI needs), or the log tail."""
+    start = log.rfind("Traceback (most recent call last):")
+    if start < 0:
+        return "\n".join(log.splitlines()[-25:])
+    lines = log[start:].splitlines()
+    out = [lines[0]]
+    for line in lines[1:]:
+        out.append(line)
+        if line and not line.startswith((" ", "\t")):  # the exception line ends the traceback
+            break
+    return "\n".join(out)
 
 
 # ------------------------------------------------------------ browser parity

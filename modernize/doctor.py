@@ -62,8 +62,8 @@ def doctor(cfg: Config) -> bool:
         check("Docker (runs Python 2.7)", code == 0, f"server {out}" if code == 0 else "not running",
               "Start Docker Desktop (Windows: with the WSL 2 backend)")
 
-    for tool in ("semgrep", "ast-grep", "ruff"):
-        code, out = _run([_tool(tool), "--version"])
+    for tool, flags in (("semgrep", ["--version", "--disable-version-check"]), ("ast-grep", ["--version"]), ("ruff", ["--version"])):
+        code, out = _run([_tool(tool), *flags])
         check(tool, code == 0, (out.splitlines() or ["not found"])[0], "uv pip install -e .")
 
     code, out = _run(["npx", "--no-install", "playwright", "--version"], cwd=cfg.root / "parity" / "e2e")

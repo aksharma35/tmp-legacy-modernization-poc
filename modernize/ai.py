@@ -31,7 +31,7 @@ def _base_args(cfg: Config) -> list[str]:
         "--no-check-update",
         "--no-show-release-notes",
         "--no-show-model-warnings",
-        "--analytics-disable",
+        "--no-analytics",
         "--no-gitignore",
         "--no-pretty",
         "--no-stream",
