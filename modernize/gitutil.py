@@ -53,10 +53,13 @@ def numstat(root: Path, sha: str) -> tuple[int, int, int]:
 
 def log(root: Path, *paths: str) -> list[dict]:
     """Commits touching `paths`, oldest first: sha, author, subject."""
-    fmt = "%h%x09%an%x09%s%x09%(trailers:key=Co-authored-by,valueonly,separator=%x2C)"
-    out = _git(root, "log", "--reverse", f"--format={fmt}", "--", *paths, check=False).stdout
+    out = _git(root, "log", "--reverse", "--format=%h%x09%an%x09%s", "--", *paths, check=False).stdout
     rows = []
     for line in out.splitlines():
-        sha, author, subject, coauthors = (line.split("\t", 3) + ["", "", ""])[:4]
+        sha, author, subject = (line.split("\t", 2) + ["", ""])[:3]
+        body = _git(root, "show", "-s", "--format=%B", sha, check=False).stdout
+        coauthors = ", ".join(
+            ln.split(":", 1)[1].strip() for ln in body.splitlines() if ln.lower().startswith("co-authored-by:")
+        )
         rows.append({"sha": sha, "author": author, "subject": subject, "coauthors": coauthors})
     return rows
