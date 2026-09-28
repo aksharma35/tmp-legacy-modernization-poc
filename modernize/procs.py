@@ -88,13 +88,11 @@ def start(cfg: Config, name: str, timeout: float = 120) -> None:
 
 def stop(cfg: Config, name: str) -> None:
     svc = cfg.services[name]
-    if svc.detached:
-        if svc.stop and is_up(svc.ready_url):
-            subprocess.run(_resolve(shlex.split(svc.stop)), cwd=cfg.root, check=False)
-        return
-
     pid_path = _pid_file(cfg, name)
     if not pid_path.exists():
+        # Not started by us as a process; a detached service (Docker) has its own stop command.
+        if svc.detached and svc.stop and is_up(svc.ready_url):
+            subprocess.run(_resolve(shlex.split(svc.stop)), cwd=cfg.root, check=False)
         return
     pid = int(pid_path.read_text().strip() or 0)
     pid_path.unlink(missing_ok=True)
