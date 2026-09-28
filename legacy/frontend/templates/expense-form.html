@@ -1,0 +1,32 @@
+<section class="card" aria-label="Add expense">
+  <h2>Add expense</h2>
+  <form name="form" novalidate ng-submit="submit(form)">
+    <div class="field">
+      <label for="title">Title</label>
+      <input id="title" name="title" type="text" ng-model="draft.title" required maxlength="60">
+      <p class="error" ng-show="form.title.$touched && form.title.$error.required">Title is required</p>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="amount">Amount (₹)</label>
+        <input id="amount" name="amount" type="number" ng-model="draft.amount" required min="1" step="1">
+        <p class="error" ng-show="form.amount.$touched && form.amount.$error.required">Amount is required</p>
+        <p class="error" ng-show="form.amount.$touched && form.amount.$error.min">Amount must be at least ₹1</p>
+      </div>
+
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category" name="category" ng-model="draft.category" ng-options="c for c in categories"></select>
+      </div>
+
+      <div class="field">
+        <label for="date">Date</label>
+        <input id="date" name="date" type="date" ng-model="draft.date" required>
+      </div>
+    </div>
+
+    <p class="error" role="alert" ng-if="serverError">{{serverError}}</p>
+    <button type="submit" class="primary" ng-disabled="form.$invalid || saving">Add expense</button>
+  </form>
+</section>

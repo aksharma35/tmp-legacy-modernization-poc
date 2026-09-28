@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="expenseApp">
+<head>
+  <meta charset="utf-8">
+  <title>Expense Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Expense Tracker</h1>
+    <p class="subtitle">Team spending &middot; September 2026 <span class="badge">AngularJS 1.8</span></p>
+  </header>
+
+  <main class="layout">
+    <div class="column">
+      <expense-form></expense-form>
+
+      <section class="card" aria-label="Expenses" ng-controller="ExpenseListCtrl" ng-cloak>
+        <div class="card-header">
+          <h2>Expenses</h2>
+          <p class="muted" role="status">Showing {{filtered.length}} of {{expenses.length}}</p>
+        </div>
+
+        <div class="toolbar">
+          <label for="search">Search</label>
+          <input id="search" type="search" ng-model="query" placeholder="Title, category, amount">
+          <button type="button" class="link" ng-show="searching" ng-click="clearSearch()">Clear</button>
+          <label for="sort">Sort by</label>
+          <select id="sort" ng-model="sortField" ng-options="o.value as o.label for o in sortOptions"></select>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Title</th>
+              <th scope="col">Category</th>
+              <th scope="col" class="num">Amount</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="e in (filtered = (expenses | filter:query | orderBy:sortField)) track by e.id">
+              <td>{{e.date | date:'dd MMM yyyy'}}</td>
+              <td>{{e.title}}</td>
+              <td><span class="tag tag-{{e.category | lowercase}}">{{e.category}}</span></td>
+              <td class="num">{{e.amount | currency:'₹'}}</td>
+              <td class="num"><button type="button" class="link danger" aria-label="Delete {{e.title}}" ng-click="remove(e)">Delete</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="empty" ng-if="filtered.length === 0">No expenses match "{{query}}".</p>
+      </section>
+    </div>
+
+    <div class="column narrow">
+      <summary-panel></summary-panel>
+    </div>
+  </main>
+
+  <script src="vendor/angular.min.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/services/expense.service.js"></script>
+  <script src="js/controllers/expense-list.controller.js"></script>
+  <script src="js/directives/expense-form.directive.js"></script>
+  <script src="js/components/summary-panel.component.js"></script>
+</body>
+</html>

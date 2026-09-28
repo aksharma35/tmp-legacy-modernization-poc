@@ -1,0 +1,41 @@
+<section class="card" aria-label="Summary">
+  <h2>Summary</h2>
+  <p class="muted" ng-if="!$ctrl.summary">Loading…</p>
+
+  <div ng-if="$ctrl.summary">
+    <dl class="stats">
+      <div class="stat">
+        <dt>Total spent</dt>
+        <dd>{{$ctrl.summary.total | currency:'₹'}}</dd>
+      </div>
+      <div class="stat">
+        <dt>Expenses</dt>
+        <dd>{{$ctrl.summary.count}}</dd>
+      </div>
+      <div class="stat">
+        <dt>Average expense</dt>
+        <dd>{{$ctrl.summary.average | currency:'₹'}}</dd>
+      </div>
+    </dl>
+
+    <table>
+      <caption>Spending by category</caption>
+      <thead>
+        <tr>
+          <th scope="col">Category</th>
+          <th scope="col" class="num">Total</th>
+          <th scope="col" class="num">Average</th>
+          <th scope="col" class="num">Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="row in $ctrl.summary.by_category">
+          <td>{{row.category}}</td>
+          <td class="num">{{row.total | currency:'₹'}}</td>
+          <td class="num">{{row.average | currency:'₹'}}</td>
+          <td class="num">{{row.share_percent}}%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

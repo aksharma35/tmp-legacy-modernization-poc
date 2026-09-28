@@ -1,0 +1,49 @@
+# Recipe: Python 2.7 -> Python 3.12 (backend)
+# A recipe says which deterministic tools run first, and what the AI is asked
+# to do with whatever they leave behind. Placeholders: {{python}}, {{ruff}},
+# {{source}}, {{target}}, {{findings}}.
+
+name: python2to3
+title: "Python 2.7 → Python 3.12 (backend)"
+source: legacy/backend
+target: modern/backend
+
+# 1. Deterministic codemods, in order. They run on a copy in {{target}}.
+codemods:
+  - name: 2to3
+    run: '"{{python}}" -m lib2to3 --write --nobackups --no-diffs "{{target}}"'
+  - name: ruff (pyupgrade rules, Python 3.12)
+    run: '"{{ruff}}" check --fix --select UP --target-version py312 --quiet --exit-zero "{{target}}"'
+
+# 2. Dependency and runtime bumps (plain file edits, no AI).
+rewrites:
+  - file: requirements.txt
+    content: |
+      # Python 3.12 runtime
+      Flask==3.1.3
+  - file: Dockerfile
+    replace:
+      "FROM python:2.7.18-slim": "FROM python:3.12-slim"
+      "# Legacy runtime: Python 2.7 (end-of-life since 2020). The official image is\n# deprecated but still available on Docker Hub, so we pin it by tag.": "# Modern runtime: Python 3.12."
+
+# 3. The AI fixes what still does not run. Aider re-runs the smoke test after
+#    every edit and feeds failures back to the model.
+ai:
+  edit: ["{{target}}/app.py"]
+  read: ["{{source}}/app.py", "CONVENTIONS.md"]
+  test: '"{{python}}" -m modernize test smoke --target modern'
+  prompt: |
+    {{target}}/app.py is a Flask API that 2to3 and ruff have just converted from
+    Python 2.7 to Python 3. The original is {{source}}/app.py (read-only).
+
+    Make it run correctly on Python 3.12 with Flask 3.1. The smoke test replays
+    every recorded API call and fails on crashes and 5xx responses; its output
+    includes the server log.
+
+    Static analysis flagged these spots (legacy file:line, rule, code):
+    {{findings}}
+
+    Follow CONVENTIONS.md. In particular: fix only what crashes or cannot run;
+    for division, rounding or other results that may differ between Python 2
+    and 3, do NOT change the logic. Mark each one with a `# MODERNIZE-REVIEW:`
+    comment instead. A human reviews those after the parity check.

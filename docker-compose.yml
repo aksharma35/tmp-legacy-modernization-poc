@@ -1,0 +1,14 @@
+# Only the legacy backend runs in Docker: Python 2.7 is end-of-life and should
+# not be installed on a laptop. Everything else runs natively.
+services:
+  legacy-api:
+    build:
+      context: ./legacy
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./legacy:/app:ro
+    environment:
+      PORT: "5001"
+      TEST_HOOKS: "1"

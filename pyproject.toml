@@ -1,0 +1,33 @@
+[project]
+name = "modernize"
+version = "0.1.0"
+description = "Legacy modernization pipeline: open-source tools do the bulk, AI fills the gaps, parity tests decide."
+readme = "README.md"
+# 3.12 exactly: 2to3 was removed from the standard library in Python 3.13.
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "typer>=0.12",
+  "rich>=13",
+  "pyyaml>=6",
+  "requests>=2.32",
+  "pytest>=8",
+  "coverage>=7.6",
+  "flask>=3.1,<4",
+  "ruff==0.16.9",
+  "semgrep==1.178.0",
+  "ast-grep-cli==0.45.3",
+]
+
+[project.scripts]
+modernize = "modernize.cli:app"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["modernize"]
+
+[tool.pytest.ini_options]
+testpaths = ["parity/api"]
+addopts = "-q -p no:cacheprovider"

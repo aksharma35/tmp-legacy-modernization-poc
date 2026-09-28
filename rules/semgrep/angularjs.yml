@@ -1,0 +1,92 @@
+# AngularJS 1.x patterns and what each one means for a React port.
+# metadata.kind:
+#   structure - maps to a React equivalent (see CONVENTIONS.md)
+#   semantic  - AngularJS behaviour that is easy to lose; the parity tests check it
+rules:
+  - id: scope-state
+    languages: [javascript]
+    severity: INFO
+    message: "State on `$scope` becomes React state (`useState`)."
+    metadata: { migration: angularjs-react, kind: structure }
+    pattern: $scope.$X = $Y
+
+  - id: scope-watch
+    languages: [javascript]
+    severity: INFO
+    message: "`$scope.$watch` becomes a derived value (preferred) or `useEffect`."
+    metadata: { migration: angularjs-react, kind: structure }
+    pattern: $scope.$watch(...)
+
+  - id: event-bus
+    languages: [javascript]
+    severity: WARNING
+    message: "`$broadcast`/`$on` is a global event bus. In React, lift the shared state up and pass callbacks/props."
+    metadata: { migration: angularjs-react, kind: structure }
+    pattern-either:
+      - pattern: $rootScope.$broadcast(...)
+      - pattern: $scope.$on(...)
+
+  - id: http-service
+    languages: [javascript]
+    severity: INFO
+    message: "`$http` calls move to `src/api.js` using `fetch`, with the same URLs and payloads."
+    metadata: { migration: angularjs-react, kind: structure }
+    pattern-either:
+      - pattern: $http.get(...)
+      - pattern: $http.post(...)
+      - pattern: $http['delete'](...)
+
+  - id: window-confirm
+    languages: [javascript]
+    severity: WARNING
+    message: "A confirmation dialog. Keep the exact same message text."
+    metadata: { migration: angularjs-react, kind: semantic }
+    pattern: $window.confirm(...)
+
+  - id: filter-filter
+    languages: [generic]
+    severity: WARNING
+    message: "`| filter:query` matches case-insensitively against EVERY property (numbers included), not just the title."
+    metadata: { migration: angularjs-react, kind: semantic }
+    paths: { include: ["*.html"] }
+    pattern-regex: '\|\s*filter\s*:'
+
+  - id: currency-filter
+    languages: [generic]
+    severity: WARNING
+    message: "`| currency:'₹'` renders the symbol, en-US thousands separators and exactly two decimals, e.g. ₹1,400.00."
+    metadata: { migration: angularjs-react, kind: semantic }
+    paths: { include: ["*.html"] }
+    pattern-regex: '\|\s*currency'
+
+  - id: date-filter
+    languages: [generic]
+    severity: WARNING
+    message: "`| date` parses '2026-09-02' as a LOCAL date. `new Date('2026-09-02')` is UTC and shows the previous day west of UTC."
+    metadata: { migration: angularjs-react, kind: semantic }
+    paths: { include: ["*.html"] }
+    pattern-regex: '\|\s*date\s*:'
+
+  - id: orderby-filter
+    languages: [generic]
+    severity: INFO
+    message: "`| orderBy:'-field'` sorts descending and is stable (ties keep their original order)."
+    metadata: { migration: angularjs-react, kind: semantic }
+    paths: { include: ["*.html"] }
+    pattern-regex: '\|\s*orderBy\s*:'
+
+  - id: two-way-binding
+    languages: [generic]
+    severity: INFO
+    message: "`ng-model` two-way binding becomes a controlled input (`value` + `onChange`)."
+    metadata: { migration: angularjs-react, kind: structure }
+    paths: { include: ["*.html"] }
+    pattern-regex: 'ng-model="[^"]+"'
+
+  - id: form-validation
+    languages: [generic]
+    severity: WARNING
+    message: "AngularJS form validation ($touched, $error, ng-disabled). Messages appear only after the field is left (blur)."
+    metadata: { migration: angularjs-react, kind: semantic }
+    paths: { include: ["*.html"] }
+    pattern-regex: '\$touched|\$error\.\w+|ng-disabled='

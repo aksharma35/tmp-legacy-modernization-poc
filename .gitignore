@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+dist-bridge/
+
+# Pipeline scratch space (logs, test results, generated hybrid page)
+out/
+parity/e2e/test-results/
+parity/e2e/playwright-report/
+
+# Aider
+.aider*
+!.aider.conf.yml
+
+# Secrets
+.env

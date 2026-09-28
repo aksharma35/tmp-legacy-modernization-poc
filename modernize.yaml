@@ -1,0 +1,52 @@
+# modernize.yaml -- where things live and how to start them.
+# The CLI reads this file; edit it to point the pipeline at a different app.
+
+project: Expense Tracker
+
+paths:
+  legacy_backend: legacy/backend
+  legacy_frontend: legacy/frontend
+  modern_backend: modern/backend
+  modern_frontend: modern/frontend
+  hybrid_frontend: out/hybrid
+
+# Long-running services. "{python}" is the Python running this CLI.
+services:
+  legacy-api:
+    # Python 2.7 runs in Docker. To use a local Python 2.7 instead, set
+    # MODERNIZE_LEGACY_API_START (see README, "Running without Docker").
+    start: docker compose up -d --build legacy-api
+    stop: docker compose stop legacy-api
+    detached: true
+    ready_url: http://localhost:5001/api/expenses
+  modern-api:
+    start: "{python} app.py"
+    cwd: modern/backend
+    env: { PORT: "5002", TEST_HOOKS: "1" }
+    ready_url: http://localhost:5002/api/expenses
+  modern-web:
+    start: npm run dev -- --port 5173 --strictPort
+    cwd: modern/frontend
+    ready_url: http://localhost:5173/
+  hybrid-web:
+    start: "{python} -m modernize.static_proxy --root out/hybrid --api http://localhost:5002 --port 8081"
+    ready_url: http://localhost:8081/
+
+# A target is one runnable version of the app.
+targets:
+  legacy:
+    services: [legacy-api]
+    api_url: http://localhost:5001
+    web_url: http://localhost:5001
+  modern:
+    services: [modern-api, modern-web]
+    api_url: http://localhost:5002
+    web_url: http://localhost:5173
+  hybrid:
+    services: [modern-api, hybrid-web]
+    api_url: http://localhost:5002
+    web_url: http://localhost:8081
+
+ai:
+  # Any model Aider supports. Override with MODERNIZE_MODEL.
+  model: anthropic/claude-sonnet-5

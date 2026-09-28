@@ -1,0 +1,13 @@
+{
+  "name": "parity-e2e",
+  "private": true,
+  "description": "Browser parity suite: the same tests run against the legacy AngularJS app, the React port and the hybrid page.",
+  "scripts": {
+    "test:legacy": "playwright test --project=legacy",
+    "test:modern": "playwright test --project=modern",
+    "test:hybrid": "playwright test --project=hybrid"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
