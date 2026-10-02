@@ -14,17 +14,44 @@ def is_repo(root: Path) -> bool:
     return _git(root, "rev-parse", "--is-inside-work-tree", check=False).returncode == 0
 
 
-def commit(root: Path, message: str, paths: list[str] | None = None) -> str | None:
+def commit(root: Path, message: str, paths: list[str] | None = None, trailer: str = "") -> str | None:
     """Stage `paths` (or everything) and commit. Returns the new SHA, or None if nothing changed."""
     if not is_repo(root):
         return None
     _git(root, "add", "-A", "--", *(paths or ["."]))
     if _git(root, "diff", "--cached", "--quiet", check=False).returncode == 0:
         return None
-    trailer = os.environ.get("MODERNIZE_COMMIT_TRAILER", "").strip()
-    full = message + (f"\n\n{trailer}" if trailer else "")
+    trailers = [t for t in (trailer, os.environ.get("MODERNIZE_COMMIT_TRAILER", "").strip()) if t]
+    full = message + ("\n\n" + "\n".join(trailers) if trailers else "")
     _git(root, "commit", "-q", "-m", full)
     return head(root)
+
+
+def changed_files(root: Path) -> list[str]:
+    """Paths with uncommitted changes (modified, added or untracked; ignored files excluded)."""
+    out = _git(root, "status", "--porcelain", "-uall", check=False).stdout
+    files = []
+    for line in out.splitlines():
+        path = line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        files.append(path.strip('"'))
+    return files
+
+
+def discard(root: Path, paths: list[str]) -> None:
+    """Throw away uncommitted changes to `paths` (restore tracked files, delete untracked ones)."""
+    for p in paths:
+        if _git(root, "ls-files", "--error-unmatch", p, check=False).returncode == 0:
+            _git(root, "checkout", "--", p, check=False)
+        else:
+            (root / p).unlink(missing_ok=True)
+
+
+def park_and_reset(root: Path, branch: str, start: str) -> None:
+    """Keep the current commits on `branch`, then move the current branch back to `start`."""
+    _git(root, "branch", "-f", branch, "HEAD")
+    _git(root, "reset", "-q", "--hard", start)
 
 
 def head(root: Path) -> str:

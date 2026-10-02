@@ -135,9 +135,16 @@ def verify_api(cfg: Config, target: str = "modern", use_ai: bool = True, decide:
             "Replace each related `MODERNIZE-REVIEW:` comment with a one-line comment that says the legacy Python 2 "
             "behaviour was kept on purpose (decision recorded in migration/decisions.yaml). Change nothing else."
         )
-        step("AI step · restore the legacy behaviour", f"model: {cfg.model}")
-        ai.run(cfg, message, edit=["modern/backend/app.py"], read=["legacy/backend/app.py", "CONVENTIONS.md"],
-               test_cmd=f'"{sys.executable}" -m modernize test api --target {target}')
+        step("AI step · Claude Code applies your decision",
+             f"model: {cfg.model} · at most {cfg.max_attempts} attempts · ${cfg.budget_usd:.2f} cap per attempt")
+        applied = ai.edit_until_green(
+            cfg, unit="backend-decisions", prompt=message, files=["modern/backend/app.py"],
+            read=["legacy/backend/app.py", "migration/decisions.yaml"],
+            check=ai.Check(f'"{sys.executable}" -m modernize test api --target {target}',
+                           f"modernize test api --target {target}"),
+        )
+        if not applied:
+            return False
 
     final = testing.run_api(cfg, target, quiet=True, show=False)
     (ok if final["ok"] else fail)(

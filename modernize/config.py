@@ -54,12 +54,11 @@ class Config:
         for name, spec in raw["services"].items():
             self.services[name] = Service(name=name, **spec)
 
-        # Local Python 2.7 instead of Docker, e.g.
-        #   MODERNIZE_LEGACY_API_START="/opt/python2.7/bin/python2.7 app.py"
-        override = os.environ.get("MODERNIZE_LEGACY_API_START")
-        if override:
+        # A local Python 2.7 instead of Docker, e.g. MODERNIZE_LEGACY_PYTHON=/opt/python2.7/bin/python2.7
+        legacy_python = os.environ.get("MODERNIZE_LEGACY_PYTHON")
+        if legacy_python:
             legacy = self.services["legacy-api"]
-            legacy.start = override
+            legacy.start = f'"{legacy_python}" ../../parity/api/linetrace.py app.py'
             legacy.stop = None
             legacy.detached = False
             legacy.cwd = raw["paths"]["legacy_backend"]
@@ -69,7 +68,10 @@ class Config:
         for name, spec in raw["targets"].items():
             self.targets[name] = Target(name=name, **spec)
 
-        self.model = os.environ.get("MODERNIZE_MODEL") or raw.get("ai", {}).get("model", "anthropic/claude-sonnet-5")
+        ai_cfg = raw.get("ai", {})
+        self.model = os.environ.get("MODERNIZE_MODEL") or ai_cfg.get("model", "claude-sonnet-5")
+        self.max_attempts = int(os.environ.get("MODERNIZE_MAX_ATTEMPTS") or ai_cfg.get("max_attempts", 3))
+        self.budget_usd = float(os.environ.get("MODERNIZE_BUDGET_USD") or ai_cfg.get("budget_per_attempt_usd", 1.0))
 
     # Handy locations -------------------------------------------------------
     @property

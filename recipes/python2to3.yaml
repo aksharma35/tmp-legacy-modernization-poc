@@ -8,6 +8,13 @@ title: "Python 2.7 → Python 3.12 (backend)"
 source: legacy/backend
 target: modern/backend
 
+# 0. Dependency gate (run by `modernize discover`): every package in the legacy
+#    requirements must resolve to a release that installs on the target Python.
+#    A package with no Python 3 release blocks the pipeline before any code changes.
+dependencies:
+  requirements: requirements.txt
+  python: "3.12"
+
 # 1. Deterministic codemods, in order. They run on a copy in {{target}}.
 codemods:
   - name: 2to3
@@ -15,30 +22,27 @@ codemods:
   - name: ruff (pyupgrade rules, Python 3.12)
     run: '"{{ruff}}" check --fix --select UP --target-version py312 --quiet --exit-zero "{{target}}"'
 
-# 2. Dependency and runtime bumps (plain file edits, no AI).
+# 2. Runtime bumps (plain file edits, no AI). requirements.txt is rewritten
+#    with the versions the dependency gate resolved.
 rewrites:
-  - file: requirements.txt
-    content: |
-      # Python 3.12 runtime
-      Flask==3.1.3
   - file: Dockerfile
     replace:
       "FROM python:2.7.18-slim": "FROM python:3.12-slim"
       "# Legacy runtime: Python 2.7 (end-of-life since 2020). The official image is\n# deprecated but still available on Docker Hub, so we pin it by tag.": "# Modern runtime: Python 3.12."
 
-# 3. The AI fixes what still does not run. Aider re-runs the smoke test after
-#    every edit and feeds failures back to the model.
+# 3. Claude Code fixes what still does not run. After each attempt the pipeline
+#    runs the check; a failure goes back to Claude (at most ai.max_attempts times).
 ai:
   edit: ["{{target}}/app.py"]
-  read: ["{{source}}/app.py", "CONVENTIONS.md"]
-  test: '"{{python}}" -m modernize test smoke --target modern'
+  read: ["{{source}}/app.py"]
+  check: '"{{python}}" -m modernize test smoke --target modern'
   prompt: |
     {{target}}/app.py is a Flask API that 2to3 and ruff have just converted from
     Python 2.7 to Python 3. The original is {{source}}/app.py (read-only).
 
-    Make it run correctly on Python 3.12 with Flask 3.1. The smoke test replays
+    Make it run correctly on Python 3.12 with Flask 3.1. The check replays
     every recorded API call and fails on crashes and 5xx responses; its output
-    includes the server log.
+    includes the server's last traceback.
 
     Static analysis flagged these spots (legacy file:line, rule, code):
     {{findings}}

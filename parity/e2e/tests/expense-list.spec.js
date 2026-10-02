@@ -8,7 +8,7 @@ test.describe('ExpenseList @ExpenseList', () => {
     await expect(expenseRows(page)).toHaveCount(11);
   });
 
-  test('lists every expense, newest first, with formatted dates and rupee amounts', async ({ page }) => {
+  test('lists every expense, newest first, with formatted dates and rupee amounts', { tag: '@B9' }, async ({ page }) => {
     await expect(expensesRegion(page).getByRole('status')).toHaveText('Showing 11 of 11');
     const rows = await tableRows(page);
     expect(rows[0]).toEqual(['24 Sep 2026', 'Phone case', 'Shopping', '₹601.00']);
@@ -16,7 +16,7 @@ test.describe('ExpenseList @ExpenseList', () => {
     await expect(rowByTitle(page, 'Running shoes').locator('td').nth(3)).toHaveText('₹1,400.00');
   });
 
-  test('search ignores case and matches every field, not just the title', async ({ page }) => {
+  test('search ignores case and matches every field, not just the title', { tag: '@B10' }, async ({ page }) => {
     const search = page.getByLabel('Search');
 
     await search.fill('TRAVEL');
@@ -33,7 +33,7 @@ test.describe('ExpenseList @ExpenseList', () => {
     await expect(expenseRows(page).first()).toContainText('Coffee beans');
   });
 
-  test('shows an empty message and a Clear button that resets the search', async ({ page }) => {
+  test('shows an empty message and a Clear button that resets the search', { tag: '@B10' }, async ({ page }) => {
     const clear = expensesRegion(page).getByRole('button', { name: 'Clear' });
     await expect(clear).toBeHidden();
 
@@ -48,7 +48,7 @@ test.describe('ExpenseList @ExpenseList', () => {
     await expect(clear).toBeHidden();
   });
 
-  test('sorts by the chosen option', async ({ page }) => {
+  test('sorts by the chosen option', { tag: '@B11' }, async ({ page }) => {
     const sort = page.getByLabel('Sort by');
 
     await sort.selectOption({ label: 'Highest amount' });
@@ -64,7 +64,7 @@ test.describe('ExpenseList @ExpenseList', () => {
     expect((await tableRows(page))[0][1]).toBe('Phone case');
   });
 
-  test('asks before deleting, and keeps the row when the user cancels', async ({ page }) => {
+  test('asks before deleting, and keeps the row when the user cancels', { tag: '@B12' }, async ({ page }) => {
     page.once('dialog', async (dialog) => {
       expect(dialog.type()).toBe('confirm');
       expect(dialog.message()).toBe('Delete "Team lunch"?');
@@ -74,7 +74,7 @@ test.describe('ExpenseList @ExpenseList', () => {
     await expect(expenseRows(page)).toHaveCount(11);
   });
 
-  test('deletes a row after confirmation', async ({ page, request }) => {
+  test('deletes a row after confirmation', { tag: '@B12' }, async ({ page, request }) => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete Team lunch' }).click();
     await expect(expenseRows(page)).toHaveCount(10);

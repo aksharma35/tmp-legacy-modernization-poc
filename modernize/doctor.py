@@ -30,7 +30,7 @@ def _version(text: str) -> tuple[int, ...]:
 
 
 def live_ai_check(cfg: Config) -> tuple[bool, str]:
-    """One tiny real request through Aider to the configured model (costs a fraction of a cent)."""
+    """One tiny real request through Claude Code to the configured model (costs a fraction of a cent)."""
     from . import ai
 
     try:
@@ -66,33 +66,35 @@ def doctor(cfg: Config, live: bool = False) -> bool:
     code, out = _run(["node", "--version"])
     check("Node.js 20.19+ (Vite 8)", code == 0 and _version(out) >= (20, 19), out or "not found", "Install Node.js 22 LTS from nodejs.org")
 
-    if os.environ.get("MODERNIZE_LEGACY_API_START"):
-        check("Python 2.7 runtime", True, "local: " + os.environ["MODERNIZE_LEGACY_API_START"])
+    if os.environ.get("MODERNIZE_LEGACY_PYTHON"):
+        check("Python 2.7 runtime", True, "local: " + os.environ["MODERNIZE_LEGACY_PYTHON"])
     else:
         code, out = _run(["docker", "info", "--format", "{{.ServerVersion}}"])
         check("Docker (runs Python 2.7)", code == 0, f"server {out}" if code == 0 else "not running",
               "Start Docker Desktop (Windows: with the WSL 2 backend)")
 
-    for tool, flags in (("semgrep", ["--version", "--disable-version-check"]), ("ast-grep", ["--version"]), ("ruff", ["--version"])):
+    for tool, flags in (("semgrep", ["--version", "--disable-version-check"]), ("ruff", ["--version"])):
         code, out = _run([_tool(tool), *flags])
         check(tool, code == 0, (out.splitlines() or ["not found"])[0], "uv pip install -e .")
+
+    code, out = _run(["uv", "--version"])
+    check("uv (dependency check)", code == 0, out or "not found", "curl -LsSf https://astral.sh/uv/install.sh | sh")
 
     code, out = _run(["npx", "--no-install", "playwright", "--version"], cwd=cfg.root / "parity" / "e2e")
     check("Playwright (browser tests)", code == 0, out or "not installed", "modernize setup")
 
-    aider = os.environ.get("AIDER_BIN") or shutil.which("aider")
-    code, out = _run([aider, "--version"]) if aider else (127, "")
-    check("Aider (AI agent)", code == 0, out.splitlines()[-1] if out else "not found",
-          "uv tool install --python 3.12 aider-chat")
+    claude = os.environ.get("CLAUDE_BIN") or shutil.which("claude")
+    code, out = _run([claude, "--version"]) if claude else (127, "")
+    check("Claude Code (AI agent)", code == 0, out.splitlines()[-1] if out else "not found",
+          "npm install -g @anthropic-ai/claude-code")
 
-    if cfg.model.startswith("anthropic/"):
-        key = os.environ.get("ANTHROPIC_API_KEY", "")
-        check("ANTHROPIC_API_KEY", bool(key), f"set (…{key[-4:]})" if key else "not set",
-              "export ANTHROPIC_API_KEY=sk-ant-…  (use a key with a low spend limit)")
-    check("AI model", True, cfg.model)
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    check("ANTHROPIC_API_KEY", bool(key), f"set (…{key[-4:]})" if key else "not set",
+          "export ANTHROPIC_API_KEY=sk-ant-…  (use a key with a low spend limit)")
+    check("AI model / limits", True, f"{cfg.model}, {cfg.max_attempts} attempts, ${cfg.budget_usd:.2f} per attempt")
     if live:
         passed, detail = live_ai_check(cfg)
-        check("Live AI call (Aider → model)", passed, detail, "Check the API key, its spend limit and the model name")
+        check("Live AI call (Claude Code → model)", passed, detail, "Check the API key, its spend limit and the model name")
 
     for name, svc in cfg.services.items():
         port = re.search(r":(\d+)/", svc.ready_url).group(1)

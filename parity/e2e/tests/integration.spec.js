@@ -12,7 +12,7 @@ test.describe('Whole page @integration', () => {
     await expect(stat(page, 'Total spent')).toHaveText('₹8,000.00');
   });
 
-  test('adding an expense refreshes the list and the summary', async ({ page }) => {
+  test('adding an expense refreshes the list and the summary', { tag: '@B15' }, async ({ page }) => {
     const form = formRegion(page);
     await form.getByLabel('Title').fill('Taxi home');
     await form.getByLabel('Amount (₹)').fill('350');
@@ -26,7 +26,7 @@ test.describe('Whole page @integration', () => {
     await expect(stat(page, 'Expenses')).toHaveText('12');
   });
 
-  test('deleting an expense refreshes the summary', async ({ page }) => {
+  test('deleting an expense refreshes the summary', { tag: '@B15' }, async ({ page }) => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Delete Team lunch' }).click();
     await expect(expenseRows(page)).toHaveCount(10);

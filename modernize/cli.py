@@ -9,7 +9,7 @@ import typer
 
 from . import decisions, gitutil, procs, testing
 from .config import Config
-from .ui import fail, info, ok, step, table
+from .ui import console, fail, info, ok, step, table
 
 app = typer.Typer(
     add_completion=False,
@@ -18,7 +18,7 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
     help="Legacy modernization pipeline: open-source tools do the bulk, AI fills the gaps, parity tests decide.",
 )
-test_app = typer.Typer(no_args_is_help=True, help="Run one check. Aider uses these as its --test-cmd.")
+test_app = typer.Typer(no_args_is_help=True, help="Run one check. The AI steps use these to decide whether an attempt worked.")
 app.add_typer(test_app, name="test")
 
 
@@ -39,7 +39,7 @@ def setup() -> None:
     ok("Browser tests installed.")
     import os
 
-    if not os.environ.get("MODERNIZE_LEGACY_API_START") and shutil.which("docker"):
+    if not os.environ.get("MODERNIZE_LEGACY_PYTHON") and shutil.which("docker"):
         info("Building the Python 2.7 image for the legacy API (first time only)…")
         if subprocess.run(["docker", "compose", "build", "legacy-api"], cwd=cfg.root).returncode == 0:
             ok("Legacy API image built.")
@@ -56,12 +56,24 @@ def doctor(ai: bool = typer.Option(False, "--ai", help="Also make one tiny live 
 
 @app.command()
 def discover(yes: bool = typer.Option(False, "--yes", help="Approve the plan without asking.")) -> None:
-    """Phase 1: find outdated patterns (Semgrep) and extract unit specs (ast-grep)."""
+    """Phase 1: check dependencies, find outdated patterns and extract unit specs (Semgrep)."""
     from .discover import build_plan
 
     cfg = Config()
-    step("Discover · what needs to change, and what could silently break", "Semgrep rules + ast-grep extraction, no AI")
+    step("Discover · what needs to change, and what could silently break", "Dependency resolution + Semgrep rules, no AI")
     plan = build_plan(cfg)
+    deps = plan["dependencies"]
+    table(f"Dependencies · must install on Python {deps['python']}", ["Package", "Legacy", f"Python {deps['python']}", "Status"], [
+        [d["name"], d["legacy"] or "-", d["resolved"] or "-",
+         "[green]✔[/green]" if d["status"] == "ok" else f"[red]✘ {d.get('reason', 'no compatible release')}[/red]"]
+        for d in deps["packages"]
+    ])
+    if not deps["ok"]:
+        fail(f"{len(deps['blocked']) or 'Some'} dependenc{'y' if len(deps['blocked']) == 1 else 'ies'} "
+             f"cannot run on Python {deps['python']}: {', '.join(deps['blocked']) or 'see migration/PLAN.md'}.")
+        console.print("  Replace or upgrade them first. The pipeline stops here, before any code changes.")
+        _exit(False)
+    ok(f"All {len(deps['packages'])} dependencies have a release for Python {deps['python']}.")
     b = plan["backend"]
     table("Backend · Python 2.7 → 3.12", ["Kind", "Findings", "Who handles it"], [
         ["syntax", b["syntax"], "codemods (2to3, ruff)"],
@@ -93,6 +105,45 @@ def lock() -> None:
     _exit(run_lock(Config()))
 
 
+@app.command("draft-tests")
+def draft_tests() -> None:
+    """Claude drafts tests for the gaps the last `lock` reported, from parity/behaviour.yaml."""
+    import json
+    import sys
+
+    from . import ai
+
+    cfg = Config()
+    lock_file = cfg.out / "lock.json"
+    if not lock_file.exists():
+        raise SystemExit("Run `modernize lock` first; it reports which tests are missing.")
+    gaps = json.loads(lock_file.read_text(encoding="utf-8"))
+    untested, missed = gaps.get("behaviours_untested", []), gaps.get("risky_lines_missed", [])
+    if not untested and not missed:
+        ok("The last lock found no gaps. Nothing to draft.")
+        raise typer.Exit(0)
+    specs = sorted(p.relative_to(cfg.root).as_posix() for p in (cfg.root / "parity" / "e2e" / "tests").glob("*.spec.js"))
+    prompt = (
+        "The parity tests do not cover everything yet. Draft the missing tests.\n\n"
+        f"Behaviours in parity/behaviour.yaml with no test: {', '.join(untested) or 'none'}\n"
+        f"Risky backend lines (legacy/backend/app.py) no API case executes: {', '.join(missed) or 'none'}\n\n"
+        "Rules:\n"
+        "- API behaviours and risky lines: add cases to parity/api/cases.yaml, each with `covers:` listing the behaviour IDs.\n"
+        "- Screen behaviours: add Playwright tests to the existing spec files, each with { tag: '@B<n>' }, "
+        "using parity/e2e/tests/helpers.js and selectors a user would see (labels, roles, text).\n"
+        "- Tests must describe what the legacy app does today and pass against it. Read the legacy code to be sure.\n"
+        "- Do not change or delete existing tests."
+    )
+    step("AI step · Claude Code drafts the missing tests",
+         f"model: {cfg.model} · at most {cfg.max_attempts} attempts · checked by `modernize lock`")
+    passed = ai.edit_until_green(
+        cfg, unit="tests", prompt=prompt, files=["parity/api/cases.yaml", *specs],
+        read=["parity/behaviour.yaml", "legacy/backend/app.py", "legacy/frontend/index.html", "parity/e2e/tests/helpers.js"],
+        check=ai.Check(f'"{sys.executable}" -m modernize lock', "modernize lock"),
+    )
+    _exit(passed)
+
+
 @app.command()
 def transform(
     recipe: str = typer.Option(..., "--recipe", "-r", help="python2to3 or angularjs-react"),
@@ -100,7 +151,7 @@ def transform(
     no_ai: bool = typer.Option(False, "--no-ai", help="Run only the deterministic steps."),
     force: bool = typer.Option(False, "--force", help="Start the backend transform over."),
 ) -> None:
-    """Phase 3: codemods first, then Aider for whatever is left."""
+    """Phase 3: codemods first, then Claude Code for whatever is left."""
     from . import transform as tf
 
     cfg = Config()

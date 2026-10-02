@@ -3,6 +3,8 @@
 # into golden/, and `modernize verify` replays the same steps against the new
 # backend and compares every field.
 #
+# `covers` lists the parity/behaviour.yaml items the case tests.
+#
 # Step formats:
 #   - GET /api/expenses                          plain request
 #   - POST /api/expenses: {title: ..., ...}      request with a JSON body
@@ -10,55 +12,81 @@
 
 cases:
   list_expenses:
-    - GET /api/expenses
+    covers: [B1]
+    steps:
+      - GET /api/expenses
 
   summary:
-    - GET /api/summary
+    covers: [B4, B5, B6, B7]
+    steps:
+      - GET /api/summary
 
   add_valid_then_summary:
-    - POST /api/expenses: {title: "Taxi home", amount: 350, category: Travel, date: "2026-09-27"}
-    - GET /api/expenses
-    - GET /api/summary
+    covers: [B2, B4, B5]
+    steps:
+      - POST /api/expenses: {title: "Taxi home", amount: 350, category: Travel, date: "2026-09-27"}
+      - GET /api/expenses
+      - GET /api/summary
 
   add_missing_title:
-    - POST /api/expenses: {amount: 350, category: Travel, date: "2026-09-27"}
+    covers: [B2]
+    steps:
+      - POST /api/expenses: {amount: 350, category: Travel, date: "2026-09-27"}
 
   add_blank_title:
-    - POST /api/expenses: {title: "   ", amount: 350, category: Travel, date: "2026-09-27"}
+    covers: [B2]
+    steps:
+      - POST /api/expenses: {title: "   ", amount: 350, category: Travel, date: "2026-09-27"}
 
   add_zero_amount:
-    - POST /api/expenses: {title: "Refund", amount: 0, category: Food, date: "2026-09-27"}
+    covers: [B2]
+    steps:
+      - POST /api/expenses: {title: "Refund", amount: 0, category: Food, date: "2026-09-27"}
 
   add_decimal_amount:
-    - POST /api/expenses: {title: "Snacks", amount: 12.5, category: Food, date: "2026-09-27"}
+    covers: [B2]
+    steps:
+      - POST /api/expenses: {title: "Snacks", amount: 12.5, category: Food, date: "2026-09-27"}
 
   add_unknown_category:
-    - POST /api/expenses: {title: "Rent", amount: 9000, category: Rent, date: "2026-09-27"}
+    covers: [B2]
+    steps:
+      - POST /api/expenses: {title: "Rent", amount: 9000, category: Rent, date: "2026-09-27"}
 
   add_bad_date:
-    - POST /api/expenses: {title: "Taxi home", amount: 350, category: Travel, date: "27/09/2026"}
+    covers: [B2]
+    steps:
+      - POST /api/expenses: {title: "Taxi home", amount: 350, category: Travel, date: "27/09/2026"}
 
   add_non_json_body:
-    - {request: POST /api/expenses, raw: "title=Taxi", content_type: "text/plain"}
+    covers: [B2]
+    steps:
+      - {request: POST /api/expenses, raw: "title=Taxi", content_type: "text/plain"}
 
   delete_then_list_and_summary:
-    - DELETE /api/expenses/2
-    - GET /api/expenses
-    - GET /api/summary
+    covers: [B3, B4, B5]
+    steps:
+      - DELETE /api/expenses/2
+      - GET /api/expenses
+      - GET /api/summary
 
   delete_missing:
-    - DELETE /api/expenses/999
+    covers: [B3]
+    steps:
+      - DELETE /api/expenses/999
 
   summary_of_empty_store:
-    - DELETE /api/expenses/1
-    - DELETE /api/expenses/2
-    - DELETE /api/expenses/3
-    - DELETE /api/expenses/4
-    - DELETE /api/expenses/5
-    - DELETE /api/expenses/6
-    - DELETE /api/expenses/7
-    - DELETE /api/expenses/8
-    - DELETE /api/expenses/9
-    - DELETE /api/expenses/10
-    - DELETE /api/expenses/11
-    - GET /api/summary
+    covers: [B8]
+    steps:
+      - DELETE /api/expenses/1
+      - DELETE /api/expenses/2
+      - DELETE /api/expenses/3
+      - DELETE /api/expenses/4
+      - DELETE /api/expenses/5
+      - DELETE /api/expenses/6
+      - DELETE /api/expenses/7
+      - DELETE /api/expenses/8
+      - DELETE /api/expenses/9
+      - DELETE /api/expenses/10
+      - DELETE /api/expenses/11
+      - GET /api/summary

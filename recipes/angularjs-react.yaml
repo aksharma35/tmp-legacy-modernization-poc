@@ -1,7 +1,7 @@
 # Recipe: AngularJS 1.8 -> React 19 (frontend)
 # There is no codemod for a framework change, so the deterministic part is the
-# scaffold and the unit specs (from `modernize discover`); the AI writes each
-# component and the browser parity tests decide when it is done.
+# scaffold and the unit specs (from `modernize discover`); Claude Code writes
+# each component and the browser parity tests decide when it is done.
 # Placeholders: {{python}}, {{source}}, {{target}}, {{unit}}, {{spec}}, {{files}}.
 
 name: angularjs-react
@@ -20,29 +20,32 @@ scaffold:
 units:
   ExpenseService:
     edit: [src/api.js]
-    test: '"{{python}}" -m modernize test build'
+    check: '"{{python}}" -m modernize test build'
+    label: modernize test build
   SummaryPanel:
     edit: [src/components/SummaryPanel.jsx, src/lib/filters.js]
-    test: '"{{python}}" -m modernize test e2e --target modern --grep @SummaryPanel'
+    check: '"{{python}}" -m modernize test e2e --target modern --grep @SummaryPanel'
+    label: modernize test e2e --grep @SummaryPanel
   ExpenseForm:
     edit: [src/components/ExpenseForm.jsx]
-    test: '"{{python}}" -m modernize test e2e --target modern --grep @ExpenseForm'
+    check: '"{{python}}" -m modernize test e2e --target modern --grep @ExpenseForm'
+    label: modernize test e2e --grep @ExpenseForm
   ExpenseList:
     edit: [src/components/ExpenseList.jsx, src/lib/filters.js]
-    test: '"{{python}}" -m modernize test e2e --target modern --grep @ExpenseList'
+    check: '"{{python}}" -m modernize test e2e --target modern --grep "@ExpenseList|@integration"'
+    label: modernize test e2e --grep "@ExpenseList|@integration"
 
 ai:
-  read: ["CONVENTIONS.md", "{{target}}/src/App.jsx", "{{target}}/src/api.js", "{{target}}/src/lib/filters.js"]
+  read: ["{{target}}/src/App.jsx", "{{target}}/src/api.js", "{{target}}/src/lib/filters.js"]
   prompt: |
     Migrate the AngularJS {{kind}} `{{angular_name}}` to React, following
     CONVENTIONS.md exactly.
 
     Legacy source (read-only): {{legacy_files}}
-    Write only: {{files}}
 
-    This spec was extracted from the legacy code by ast-grep and Semgrep. Every
-    item under "behaviour_notes" is something the browser parity tests check:
+    This spec was extracted from the legacy code by Semgrep. Every item under
+    "behaviour_notes" is something the browser parity tests check:
     {{spec}}
 
-    When you are done, the parity tests tagged @{{unit}} must pass against the
-    React app. They are the same tests that pass against the AngularJS app.
+    You are done when the parity tests tagged @{{unit}} pass against the React
+    app. They are the same tests that pass against the AngularJS app.

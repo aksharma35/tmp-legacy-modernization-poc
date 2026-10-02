@@ -41,11 +41,12 @@ def backend_coverage(cfg: Config) -> dict | None:
 
 
 def _classify(commit: dict) -> str:
-    if commit["author"].endswith("(aider)") or "aider" in commit.get("coauthors", "").lower():
-        return "AI (Aider)"
-    if commit["subject"].startswith("modernize: codemod"):
+    subject = commit["subject"]
+    if subject.startswith("ai:"):
+        return "AI (Claude Code)"
+    if subject.startswith("codemod:"):
         return "Codemod"
-    if commit["subject"].startswith("modernize:"):
+    if subject.startswith("modernize:"):
         return "Pipeline"
     return "Human"
 
@@ -112,12 +113,43 @@ def build_report(cfg: Config) -> Path:
               "", "Full list: `migration/PLAN.md`.", ""]
 
     L += ["## Who changed what", "", "| Changed by | Commits | Lines added | Lines removed |", "|---|---|---|---|"]
-    for kind in ("Codemod", "AI (Aider)", "Pipeline", "Human"):
+    for kind in ("Codemod", "AI (Claude Code)", "Pipeline", "Human"):
         if kind in buckets:
             n, a, r = buckets[kind]
             L.append(f"| {kind} | {n} | {a} | {r} |")
     L += ["", "“Pipeline” = copies, scaffolding and accepted decisions. Every row below is one commit and can be undone with `git revert <sha>`.", "",
           "| Commit | By | What | Lines |", "|---|---|---|---|", *commit_rows, ""]
+
+    ai_rows: dict[str, list[str]] = {}
+    for c in commits:
+        if c["subject"].startswith("ai:"):
+            unit, _, rest = c["subject"][3:].strip().partition(" attempt ")
+            ai_rows.setdefault(unit, []).append(rest)
+    usage_file = cfg.out / "ai-usage.jsonl"
+    session_cost: dict[str, float] = {}
+    if usage_file.exists():
+        for line in usage_file.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            if row.get("session") and row.get("cost_usd") is not None:
+                # A resumed session reports its running total, so keep the largest value per session.
+                session_cost[row["session"]] = max(session_cost.get(row["session"], 0.0), float(row["cost_usd"]))
+    if ai_rows:
+        L += ["## AI steps (Claude Code)", "",
+              f"Each step had at most {cfg.max_attempts} attempts and a ${cfg.budget_usd:.2f} spend cap per attempt; "
+              "after every attempt the pipeline ran the step's check.", "",
+              "| Step | Attempts | Result |", "|---|---|---|"]
+        for unit, attempts in ai_rows.items():
+            last = attempts[-1]
+            L.append(f"| {unit} | {len(attempts)} | {'check passes' if 'passes' in last else 'check fails'} |")
+        if session_cost:
+            L += ["", f"Estimated AI cost for this run: **${sum(session_cost.values()):.2f}** "
+                  f"({len(session_cost)} Claude Code sessions, client-side estimate)."]
+        L.append("")
+    blocked = _load(cfg.out / "blocked.json")
+    if blocked:
+        L += ["## Blocked", "",
+              f"**{blocked['unit']}** still failed after {blocked['attempts']} attempts. The attempts are on branch "
+              f"`{blocked['branch']}`; the working branch was reset to `{blocked['reset_to']}` and the pipeline stopped.", ""]
 
     L += ["## Behaviour changes and decisions", ""]
     changes = dec.get("behaviour_changes") or []

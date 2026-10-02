@@ -1,0 +1,47 @@
+# Structural extraction for `modernize discover` (not findings).
+# Semgrep matches each AngularJS construct by syntax, so text inside comments or
+# strings never counts. discover.py then reads the names out of each matched snippet.
+rules:
+  - id: x-register
+    languages: [javascript]
+    severity: INFO
+    message: AngularJS unit registration
+    pattern: angular.module($M).$KIND($NAME, ...)
+
+  - id: x-scope-assign
+    languages: [javascript]
+    severity: INFO
+    message: $scope property
+    pattern: $scope.$P = $V
+
+  - id: x-watch
+    languages: [javascript]
+    severity: INFO
+    message: $scope.$watch
+    pattern: $scope.$watch($E, ...)
+
+  - id: x-listen
+    languages: [javascript]
+    severity: INFO
+    message: $scope.$on
+    pattern: $scope.$on($E, ...)
+
+  - id: x-emit
+    languages: [javascript]
+    severity: INFO
+    message: $rootScope.$broadcast
+    pattern: $rootScope.$broadcast($E, ...)
+
+  - id: x-http
+    languages: [javascript]
+    severity: INFO
+    message: $http call
+    pattern-either:
+      - pattern: $http.$METHOD($URL, ...)
+      - pattern: $http[$METHOD]($URL, ...)
+
+  - id: x-confirm
+    languages: [javascript]
+    severity: INFO
+    message: confirmation dialog
+    pattern: $window.confirm($MSG)

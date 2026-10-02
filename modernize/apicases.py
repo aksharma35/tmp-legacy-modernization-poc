@@ -39,9 +39,19 @@ def parse_step(spec: Any) -> Step:
     raise ValueError(f"Cannot read step: {spec!r}")
 
 
+def _steps(spec: Any) -> list:
+    return spec["steps"] if isinstance(spec, dict) else spec
+
+
 def load_cases(cases_file: Path) -> dict[str, list[Step]]:
     data = yaml.safe_load(cases_file.read_text(encoding="utf-8"))
-    return {name: [parse_step(s) for s in steps] for name, steps in data["cases"].items()}
+    return {name: [parse_step(s) for s in _steps(spec)] for name, spec in data["cases"].items()}
+
+
+def load_covers(cases_file: Path) -> dict[str, list[str]]:
+    """Behaviour IDs each case covers (from `covers:`)."""
+    data = yaml.safe_load(cases_file.read_text(encoding="utf-8"))
+    return {name: list(spec.get("covers", [])) if isinstance(spec, dict) else [] for name, spec in data["cases"].items()}
 
 
 def requests_sender(base_url: str) -> Send:

@@ -9,6 +9,8 @@ import sys
 from html.parser import HTMLParser
 from pathlib import Path
 
+import yaml
+
 from .config import Config
 
 
@@ -62,20 +64,97 @@ def run_semgrep(cfg: Config) -> list[dict]:
     return findings
 
 
-# ------------------------------------------------------------------ ast-grep
+# ---------------------------------------------------------- dependency gate
 
-def ast_grep(cfg: Config, pattern: str, path: Path) -> list[dict]:
-    cmd = [_tool("ast-grep"), "run", "--lang", "js", "-p", pattern, "--json=compact", str(path)]
+_REQ_NAME = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:==\s*([^\s;#]+))?")
+
+
+def _norm(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _uv_compile(names: list[str], python: str) -> tuple[bool, dict[str, str], str]:
+    uv = shutil.which("uv")
+    if not uv:
+        raise SystemExit("uv not found. Install it: curl -LsSf https://astral.sh/uv/install.sh | sh")
+    proc = subprocess.run([uv, "pip", "compile", "-", "--python-version", python, "--no-header", "--no-annotate", "--quiet"],
+                          input="\n".join(names) + "\n", capture_output=True, text=True, encoding="utf-8")
+    pins = {}
+    for line in proc.stdout.splitlines():
+        if "==" in line:
+            n, v = line.split("==", 1)
+            pins[_norm(n)] = v.strip()
+    return proc.returncode == 0, pins, proc.stderr.strip()
+
+
+def check_dependencies(cfg: Config) -> dict:
+    """Every legacy requirement must have a release that installs on the target Python."""
+    recipe = yaml.safe_load((cfg.root / "recipes" / "python2to3.yaml").read_text(encoding="utf-8"))
+    dep = recipe.get("dependencies", {})
+    python = str(dep.get("python", "3.12"))
+    req_file = cfg.root / recipe["source"] / dep.get("requirements", "requirements.txt")
+    legacy = []
+    for line in req_file.read_text(encoding="utf-8").splitlines():
+        m = _REQ_NAME.match(line)
+        if m and not line.strip().startswith("#"):
+            legacy.append({"name": m.group(1), "legacy": m.group(2) or "", "resolved": "", "status": "ok"})
+    names = [d["name"] for d in legacy]
+
+    resolved, pins, error = _uv_compile(names, python)
+    blocked = []
+    if not resolved:
+        # Find which packages block the resolution, one at a time.
+        for d in legacy:
+            alone_ok, _, alone_err = _uv_compile([d["name"]], python)
+            if not alone_ok:
+                d["status"] = "blocked"
+                d["reason"] = ("no Python 3 release (only a Python 2 build, which fails)" if "Failed to build" in alone_err
+                               else f"no release that installs on Python {python}")
+                blocked.append(d["name"])
+        # Show what the remaining packages would resolve to.
+        _, pins, _ = _uv_compile([d["name"] for d in legacy if d["status"] == "ok"], python)
+    for d in legacy:
+        d["resolved"] = pins.get(_norm(d["name"]), "")
+    return {
+        "python": python,
+        "requirements": _rel(cfg, req_file),
+        "packages": legacy,
+        "blocked": blocked,
+        "ok": resolved,
+        "error": "" if resolved else error[-1500:],
+        "lock": "".join(f"{n}=={v}\n" for n, v in sorted(pins.items())) if resolved and not blocked else "",
+    }
+
+
+# ------------------------------------------------- structural extraction
+
+def semgrep_matches(cfg: Config, rules: Path, target: Path) -> list[dict]:
+    """Run extraction rules; return each match with its file and exact matched text."""
+    cmd = [_tool("semgrep"), "scan", "--config", str(rules), "--json", "--metrics=off", "--disable-version-check",
+           "--quiet", str(target)]
     proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
     if proc.returncode not in (0, 1):
-        raise RuntimeError(f"ast-grep failed:\n{proc.stderr[-2000:]}")
+        raise RuntimeError(f"semgrep failed ({proc.returncode}):\n{proc.stderr[-2000:]}")
+    texts: dict[str, bytes] = {}
     out = []
-    for m in json.loads(proc.stdout or "[]"):
-        meta = m.get("metaVariables", {})
-        single = {k: v["text"] for k, v in meta.get("single", {}).items()}
-        multi = {k: [x["text"] for x in v if x["text"] not in (",",)] for k, v in meta.get("multi", {}).items()}
-        out.append({"file": _rel(cfg, m["file"]), "line": m["range"]["start"]["line"] + 1, "single": single, "multi": multi})
+    for r in json.loads(proc.stdout)["results"]:
+        path = r["path"]
+        if path not in texts:
+            texts[path] = Path(path).read_bytes()
+        snippet = texts[path][r["start"]["offset"]:r["end"]["offset"]].decode("utf-8")
+        out.append({"rule": r["check_id"].split(".")[-1], "file": _rel(cfg, path), "line": r["start"]["line"],
+                    "text": snippet})
+    out.sort(key=lambda m: (m["file"], m["line"]))
     return out
+
+
+# Read the names out of each matched snippet.
+_REGISTER = re.compile(r"angular\.module\([^)]*\)\s*\.\s*(\w+)\s*\(\s*['\"]([^'\"]+)['\"]")
+_FIRST_FN = re.compile(r"function\s*\(([^)]*)\)")
+_ASSIGN = re.compile(r"\$scope\.(\w+)\s*=\s*(function\b)?")
+_FIRST_ARG = re.compile(r"\(\s*(['\"][^'\"]*['\"])")
+_HTTP = re.compile(r"\$http(?:\.(\w+)|\[\s*['\"](\w+)['\"]\s*\])\s*\(\s*([^,)]+)")
+_CONFIRM = re.compile(r"confirm\((.*)\)\s*$", re.S)
 
 
 def _unquote(s: str) -> str:
@@ -155,25 +234,41 @@ def template_features(html: str) -> dict:
 
 def extract_units(cfg: Config) -> list[dict]:
     front = cfg.paths["legacy_frontend"]
-    js_dir = front / "js"
-    regs = ast_grep(cfg, "angular.module($M).$KIND($NAME, $$$REST)", js_dir)
+    matches = semgrep_matches(cfg, cfg.root / "rules" / "extract" / "angularjs-units.yml", front / "js")
+    by_file: dict[str, list[dict]] = {}
+    for m in matches:
+        by_file.setdefault(m["file"], []).append(m)
     index_html = (front / "index.html").read_text(encoding="utf-8")
-    names = {_unquote(r["single"]["NAME"]) for r in regs}
+
+    regs = []
+    for m in matches:
+        if m["rule"] == "x-register":
+            reg = _REGISTER.search(m["text"])
+            if reg:
+                fn = _FIRST_FN.search(m["text"])
+                injects = [p.strip() for p in fn.group(1).split(",") if p.strip()] if fn else []
+                regs.append({"file": m["file"], "kind": reg.group(1), "name": reg.group(2), "injects": injects,
+                             "text": m["text"]})
+    names = {r["name"] for r in regs}
 
     units = []
     for reg in regs:
-        file = reg["file"]
-        kind = reg["single"]["KIND"]
-        angular_name = _unquote(reg["single"]["NAME"])
+        file, kind, angular_name, injects = reg["file"], reg["kind"], reg["name"], reg["injects"]
         name = _pascal(angular_name)
-        src = (cfg.root / file).read_text(encoding="utf-8")
+        src = reg["text"]
+        found = by_file.get(file, [])
 
-        first_fn = ast_grep(cfg, "function ($$$P) { $$$B }", cfg.root / file)
-        injects = [p for p in (first_fn[0]["multi"].get("P", []) if first_fn else [])]
+        def texts(rule: str) -> list[str]:
+            return [m["text"] for m in found if m["rule"] == rule]
 
         state, handlers = [], []
-        for m in ast_grep(cfg, "$scope.$P = $V", cfg.root / file):
-            (handlers if m["single"]["V"].startswith("function") else state).append(m["single"]["P"])
+        for t in texts("x-scope-assign"):
+            a = _ASSIGN.search(t)
+            if a:
+                (handlers if a.group(2) else state).append(a.group(1))
+
+        def first_args(rule: str) -> list[str]:
+            return [a.group(1) for t in texts(rule) if (a := _FIRST_ARG.search(t))]
 
         spec = {
             "name": name,
@@ -184,18 +279,16 @@ def extract_units(cfg: Config) -> list[dict]:
             "depends_on": sorted(_pascal(i) for i in injects if i in names),
             "scope_state": sorted(set(state)),
             "handlers": sorted(set(handlers)),
-            "watches": [m["single"]["E"] for m in ast_grep(cfg, "$scope.$watch($E, $$$)", cfg.root / file)],
-            "listens": [_unquote(m["single"]["EV"]) for m in ast_grep(cfg, "$scope.$on($EV, $$$)", cfg.root / file)],
-            "emits": [_unquote(m["single"]["EV"]) for m in ast_grep(cfg, "$rootScope.$broadcast($EV)", cfg.root / file)],
+            "watches": first_args("x-watch"),
+            "listens": [_unquote(e) for e in first_args("x-listen")],
+            "emits": [_unquote(e) for e in first_args("x-emit")],
             "http": [],
-            "dialogs": [m["single"]["MSG"] for m in ast_grep(cfg, "$window.confirm($MSG)", cfg.root / file)],
+            "dialogs": [c.group(1).strip() for t in texts("x-confirm") if (c := _CONFIRM.search(t))],
         }
-        for m in ast_grep(cfg, "$http.$METHOD($$$ARGS)", cfg.root / file):
-            args = m["multi"].get("ARGS", [])
-            spec["http"].append({"method": m["single"]["METHOD"].upper(), "url": args[0] if args else ""})
-        for m in ast_grep(cfg, "$http[$METHOD]($$$ARGS)", cfg.root / file):
-            args = m["multi"].get("ARGS", [])
-            spec["http"].append({"method": _unquote(m["single"]["METHOD"]).upper(), "url": args[0] if args else ""})
+        for t in texts("x-http"):
+            h = _HTTP.search(t)
+            if h:
+                spec["http"].append({"method": (h.group(1) or h.group(2)).upper(), "url": h.group(3).strip()})
 
         template_url = re.search(r"templateUrl:\s*'([^']+)'", src)
         if template_url:
@@ -251,6 +344,7 @@ def order_units(units: list[dict]) -> list[dict]:
 
 
 def build_plan(cfg: Config) -> dict:
+    deps = check_dependencies(cfg)
     findings = run_semgrep(cfg)
     units = extract_units(cfg)
     index_file = _rel(cfg, cfg.paths["legacy_frontend"] / "index.html")
@@ -263,6 +357,7 @@ def build_plan(cfg: Config) -> dict:
 
     plan = {
         "project": cfg.project,
+        "dependencies": deps,
         "findings": findings,
         "backend": {
             "recipe": "python2to3",
@@ -293,14 +388,23 @@ def plan_markdown(plan: dict) -> str:
     lines = [
         f"# Migration plan: {plan['project']}",
         "",
-        "Generated by `modernize discover` from Semgrep and ast-grep results. Approve it before any code changes.",
+        "Generated by `modernize discover` from dependency resolution and Semgrep. Approve it before any code changes.",
         "",
         "## 1. Backend: Python 2.7 → Python 3.12 (recipe `python2to3`)",
+        "",
+        f"### Dependencies (must install on Python {plan['dependencies']['python']})",
+        "",
+        "| Package | Legacy | Python " + plan["dependencies"]["python"] + " | Status |",
+        "|---|---|---|---|",
+        *[f"| {d['name']} | {d['legacy'] or '-'} | {d['resolved'] or '-'} | "
+          f"{'✅' if d['status'] == 'ok' else '❌ ' + d.get('reason', 'blocked')} |" for d in plan["dependencies"]["packages"]],
+        "",
+        "### Code findings",
         "",
         "| What | Count | Handled by |",
         "|---|---|---|",
         f"| Syntax changes | {b['syntax']} | codemods (2to3, ruff) |",
-        f"| Runtime breaks the codemods leave behind | {b['runtime']} | AI (Aider), checked by smoke tests |",
+        f"| Runtime breaks the codemods leave behind | {b['runtime']} | AI (Claude Code), checked by smoke tests |",
         f"| Silent behaviour changes | {b['semantic']} | parity tests catch them, a human decides |",
         "",
         "| File:line | Rule | Kind | Code |",

@@ -9,6 +9,10 @@ services:
       - "5001:5001"
     volumes:
       - ./legacy:/app:ro
+      - ./parity/api/linetrace.py:/parity/linetrace.py:ro
     environment:
       PORT: "5001"
       TEST_HOOKS: "1"
+    # Test harness: runs the unchanged app.py and records which lines execute,
+    # so `modernize lock` can prove the recorded API calls reach every risky line.
+    command: ["python", "/parity/linetrace.py", "/app/backend/app.py"]

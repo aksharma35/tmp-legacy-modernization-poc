@@ -1,0 +1,64 @@
+# What the Expense Tracker must do, written by people who know the product.
+#
+# Tests are drafted from this file (with Claude, then reviewed) and every test
+# says which items it covers: API cases with `covers:` in parity/api/cases.yaml,
+# browser tests with a tag such as { tag: '@B10' }.
+#
+# `modernize lock` refuses to lock the contract until every item below has at
+# least one test that passes on the legacy app. The tests then record exactly
+# what the legacy app does, including details nobody wrote down here.
+
+behaviours:
+  # ---- API (Python backend)
+  - id: B1
+    area: API
+    text: GET /api/expenses returns every expense with id, title, amount, category and date.
+  - id: B2
+    area: API
+    text: >
+      POST /api/expenses validates the input: title required (trimmed), amount a whole number of
+      at least 1, category one of Food/Travel/Bills/Shopping, date as YYYY-MM-DD. Invalid input
+      gets HTTP 400 with an error message; valid input gets 201 and the new expense.
+  - id: B3
+    area: API
+    text: DELETE /api/expenses/<id> removes the expense (204); an unknown id gets 404.
+  - id: B4
+    area: API
+    text: GET /api/summary returns the overall total and count, and a total and count per category.
+  - id: B5
+    area: API
+    text: The summary includes the average expense, overall and per category (total divided by count).
+  - id: B6
+    area: API
+    text: The summary includes each category's share of all spending, as a whole percentage.
+  - id: B7
+    area: API
+    text: Summary categories are ordered by total, largest first.
+  - id: B8
+    area: API
+    text: With no expenses, the summary returns zeros instead of an error.
+
+  # ---- Screens (AngularJS frontend)
+  - id: B9
+    area: UI
+    text: The expense list shows dates as "dd MMM yyyy" and amounts in rupees with two decimals, newest first.
+  - id: B10
+    area: UI
+    text: Search ignores case and matches any field (title, category or amount); Clear resets it.
+  - id: B11
+    area: UI
+    text: The list can be sorted newest first, oldest first, highest amount or lowest amount.
+  - id: B12
+    area: UI
+    text: Deleting asks for confirmation; cancelling keeps the expense.
+  - id: B13
+    area: UI
+    text: >
+      The add form keeps its button disabled until the input is valid, shows validation messages
+      only after a field is left, sends the trimmed values, and resets after saving.
+  - id: B14
+    area: UI
+    text: The summary panel shows total spent, number of expenses, average expense and a per-category table.
+  - id: B15
+    area: UI
+    text: Adding or deleting an expense refreshes both the list and the summary.

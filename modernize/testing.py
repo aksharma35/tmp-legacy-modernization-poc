@@ -1,4 +1,4 @@
-"""Test runners used by the pipeline and by Aider's --test-cmd."""
+"""Test runners used by the pipeline and by the AI steps' checks."""
 from __future__ import annotations
 
 import json
@@ -133,7 +133,8 @@ def summarize_e2e(json_file: Path, ok_flag: bool) -> dict:
                 for r in test.get("results", []):
                     if r.get("error"):
                         error = (r["error"].get("message") or "").splitlines()[0][:200]
-                summary["tests"].append({"suite": " › ".join(trail), "title": spec["title"], "status": status, "error": error})
+                summary["tests"].append({"suite": " › ".join(trail), "title": spec["title"], "status": status, "error": error,
+                                         "tags": [t.lstrip("@") for t in spec.get("tags", [])]})
         for child in suite.get("suites", []):
             walk(child, trail)
 

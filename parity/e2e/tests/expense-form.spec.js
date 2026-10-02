@@ -8,7 +8,7 @@ test.describe('ExpenseForm @ExpenseForm', () => {
     await expect(formRegion(page).getByRole('button', { name: 'Add expense' })).toBeVisible();
   });
 
-  test('keeps "Add expense" disabled until the form is valid', async ({ page }) => {
+  test('keeps "Add expense" disabled until the form is valid', { tag: '@B13' }, async ({ page }) => {
     const form = formRegion(page);
     const add = form.getByRole('button', { name: 'Add expense' });
     await expect(add).toBeDisabled();
@@ -20,7 +20,7 @@ test.describe('ExpenseForm @ExpenseForm', () => {
     await expect(add).toBeEnabled();
   });
 
-  test('shows validation messages after the user leaves a field', async ({ page }) => {
+  test('shows validation messages after the user leaves a field', { tag: '@B13' }, async ({ page }) => {
     const form = formRegion(page);
     await expect(form.getByText('Title is required')).toBeHidden();
 
@@ -34,7 +34,7 @@ test.describe('ExpenseForm @ExpenseForm', () => {
     await expect(form.getByRole('button', { name: 'Add expense' })).toBeDisabled();
   });
 
-  test('saves the expense with the same payload and resets the form', async ({ page, request }) => {
+  test('saves the expense with the same payload and resets the form', { tag: '@B13' }, async ({ page, request }) => {
     const form = formRegion(page);
     await form.getByLabel('Title').fill('  Taxi home  ');
     await form.getByLabel('Amount (₹)').fill('350');

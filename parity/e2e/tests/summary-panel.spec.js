@@ -8,13 +8,13 @@ test.describe('SummaryPanel @SummaryPanel', () => {
     await expect(stat(page, 'Total spent')).toBeVisible();
   });
 
-  test('shows total, count and average expense', async ({ page }) => {
+  test('shows total, count and average expense', { tag: '@B14' }, async ({ page }) => {
     await expect(stat(page, 'Total spent')).toHaveText('₹8,000.00');
     await expect(stat(page, 'Expenses')).toHaveText('11');
     await expect(stat(page, 'Average expense')).toHaveText('₹727.00');
   });
 
-  test('breaks spending down by category, largest first', async ({ page }) => {
+  test('breaks spending down by category, largest first', { tag: '@B14' }, async ({ page }) => {
     const table = summaryRegion(page).getByRole('table', { name: 'Spending by category' });
     const rows = table.locator('tbody tr');
     await expect(rows).toHaveCount(4);

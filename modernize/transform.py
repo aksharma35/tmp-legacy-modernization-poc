@@ -1,4 +1,4 @@
-"""Phase 3 -- transform: deterministic codemods first, then Aider for what is left."""
+"""Phase 3 -- transform: deterministic codemods first, then Claude Code for what is left."""
 from __future__ import annotations
 
 import json
@@ -71,6 +71,12 @@ def transform_backend(cfg: Config, recipe: dict, use_ai: bool = True, force: boo
                 warn("2to3 needs Python 3.12 (it was removed in 3.13). Recreate the venv with Python 3.12.")
             return False
 
+    deps = _load_plan(cfg).get("dependencies") or {}
+    if deps.get("lock"):
+        (dst / "requirements.txt").write_text(
+            f"# Resolved for Python {deps['python']} by `modernize discover` (uv pip compile)\n" + deps["lock"], encoding="utf-8")
+        info(f"Rewrote {recipe['target']}/requirements.txt with the versions resolved for Python {deps['python']}")
+
     for rw in recipe.get("rewrites", []):
         path = dst / rw["file"]
         if "content" in rw:
@@ -79,7 +85,8 @@ def transform_backend(cfg: Config, recipe: dict, use_ai: bool = True, force: boo
             path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
         info(f"Rewrote {recipe['target']}/{rw['file']}")
 
-    sha = gitutil.commit(cfg.root, f"modernize: codemods for {recipe['name']} (deterministic, no AI)", [recipe["target"]])
+    sha = gitutil.commit(cfg.root, f"codemod: {' + '.join(m['name'].split(' ')[0] for m in recipe.get('codemods', []))} "
+                         f"for {recipe['name']} (deterministic, no AI)", [recipe["target"]])
     if sha:
         files, added, removed = gitutil.numstat(cfg.root, sha)
         ok(f"Codemods changed {files} file(s): +{added} −{removed} lines  [dim]({sha})[/dim]")
@@ -98,15 +105,16 @@ def transform_backend(cfg: Config, recipe: dict, use_ai: bool = True, force: boo
         for f in plan["findings"] if f["migration"] == recipe["name"] and f["kind"] in ("runtime", "semantic")
     )
     message = render(recipe["ai"]["prompt"], findings=findings, **ph)
-    step("AI step · Aider fixes what the codemods left", f"model: {cfg.model}")
-    ai.run(
+    step("AI step · Claude Code fixes what the codemods left",
+         f"model: {cfg.model} · at most {cfg.max_attempts} attempts · ${cfg.budget_usd:.2f} cap per attempt")
+    return ai.edit_until_green(
         cfg,
-        message,
-        edit=[render(p, **ph) for p in recipe["ai"]["edit"]],
+        unit="backend",
+        prompt=message,
+        files=[render(p, **ph) for p in recipe["ai"]["edit"]],
         read=[render(p, **ph) for p in recipe["ai"]["read"]],
-        test_cmd=render(recipe["ai"]["test"], **ph),
+        check=ai.Check(render(recipe["ai"]["check"], **ph), "modernize test smoke --target modern"),
     )
-    return testing.run_smoke(cfg, "modern")
 
 
 # ------------------------------------------------------- angularjs-react
@@ -145,7 +153,7 @@ def transform_frontend(cfg: Config, recipe: dict, only: list[str] | None = None,
             warn(f"No mapping for {unit['name']} in the recipe; skipping.")
             continue
         edit = [f"{recipe['target']}/{p}" for p in target_cfg["edit"]]
-        test_cmd = render(target_cfg["test"], **ph)
+        check = ai.Check(render(target_cfg["check"], **ph), target_cfg["label"])
         if use_ai:
             spec = {k: v for k, v in unit.items() if k not in ("template_html",)}
             message = render(
@@ -163,10 +171,15 @@ def transform_frontend(cfg: Config, recipe: dict, only: list[str] | None = None,
             if unit.get("template_html"):
                 legacy_read.append(recipe["source"] + "/index.html")
             read = sorted(set(legacy_read + [render(p, **ph) for p in recipe["ai"]["read"]]))
-            ai.run(cfg, message, edit=edit, read=[r for r in read if r not in edit], test_cmd=test_cmd)
+            passed = ai.edit_until_green(cfg, unit=unit["name"], prompt=message, files=edit,
+                                         read=[r for r in read if r not in edit], check=check)
+        else:
+            passed, _ = check.run(cfg)
+        results.append([unit["name"], "✔ parity tests pass" if passed else "✘ blocked: pipeline stopped"])
+        if not passed:
+            break
 
-        passed = subprocess.run(test_cmd, shell=True, cwd=cfg.root).returncode == 0
-        results.append([unit["name"], "✔ parity tests pass" if passed else "✘ still failing"])
-
+    skipped = [u["name"] for u in units[len(results):]]
+    results += [[name, "· not started"] for name in skipped]
     table("Frontend migration", ["Unit", "Result"], results)
     return all(r[1].startswith("✔") for r in results)

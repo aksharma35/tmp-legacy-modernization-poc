@@ -47,6 +47,8 @@ targets:
     api_url: http://localhost:5002
     web_url: http://localhost:8081
 
+# The AI steps run Claude Code headless (`claude -p`). The pipeline owns the retry loop.
 ai:
-  # Any model Aider supports. Override with MODERNIZE_MODEL.
-  model: anthropic/claude-sonnet-5
+  model: claude-sonnet-5          # or claude-opus-5-5; override with MODERNIZE_MODEL
+  max_attempts: 3                 # per step; then the pipeline stops (override: MODERNIZE_MAX_ATTEMPTS)
+  budget_per_attempt_usd: 1.00    # Claude Code --max-budget-usd (override: MODERNIZE_BUDGET_USD)

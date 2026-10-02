@@ -15,7 +15,6 @@ dependencies = [
   "flask>=3.1,<4",
   "ruff==0.16.9",
   "semgrep==1.178.0",
-  "ast-grep-cli==0.45.3",
 ]
 
 [project.scripts]

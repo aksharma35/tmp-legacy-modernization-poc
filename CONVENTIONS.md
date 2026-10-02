@@ -1,7 +1,8 @@
 # Migration conventions
 
-Aider reads this file on every run. Humans should read it too: it is the
-contract the AI works under.
+Claude Code gets this file as part of its system prompt on every AI step
+(`--append-system-prompt-file`). Humans should read it too: it is the contract
+the AI works under.
 
 ## Ground rules (both migrations)
 
