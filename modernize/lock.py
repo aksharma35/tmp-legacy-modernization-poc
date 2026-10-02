@@ -50,7 +50,7 @@ def _trace(cfg: Config, method: str) -> dict | None:
     return res.json() if method == "GET" else {}
 
 
-def lock(cfg: Config) -> bool:
+def lock(cfg: Config, commit: bool = True) -> bool:
     step("Lock · record the legacy behaviour and prove the tests are enough",
          "Nothing changes until all four checks pass")
 
@@ -139,8 +139,16 @@ def lock(cfg: Config) -> bool:
                       "parity/behaviour.yaml), then run `modernize lock` again.")
         return False
 
-    sha = gitutil.commit(cfg.root, f"modernize: lock legacy behaviour ({n_cases} API cases, {e2e['passed']} browser tests, "
-                                   f"{len(behaviours)} behaviours, {len(risky)} risky lines covered)",
-                         ["parity/api/golden"])
+    if not commit:
+        ok("All four checks pass (not committed).")
+        return True
+    sha = commit_lock(cfg)
     ok("Contract locked" + (f"  [dim]({sha})[/dim]" if sha else ""))
     return True
+
+
+def commit_lock(cfg: Config) -> str | None:
+    s = json.loads((cfg.out / "lock.json").read_text(encoding="utf-8"))
+    return gitutil.commit(cfg.root, f"modernize: lock legacy behaviour ({s['api_cases']} API cases, {s['browser_tests']} browser tests, "
+                                    f"{s['behaviours']} behaviours, {len(s['risky_lines'])} risky lines covered)",
+                          ["parity/api/golden"])

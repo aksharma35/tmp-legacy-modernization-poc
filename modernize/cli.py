@@ -98,11 +98,11 @@ def discover(yes: bool = typer.Option(False, "--yes", help="Approve the plan wit
 
 
 @app.command()
-def lock() -> None:
-    """Phase 2: record the legacy app's behaviour (API responses + browser tests)."""
+def lock(no_commit: bool = typer.Option(False, "--no-commit", help="Run the checks without committing the recording.")) -> None:
+    """Phase 2: record the legacy behaviour and prove the tests cover the spec and every risky line."""
     from .lock import lock as run_lock
 
-    _exit(run_lock(Config()))
+    _exit(run_lock(Config(), commit=not no_commit))
 
 
 @app.command("draft-tests")
@@ -139,8 +139,13 @@ def draft_tests() -> None:
     passed = ai.edit_until_green(
         cfg, unit="tests", prompt=prompt, files=["parity/api/cases.yaml", *specs],
         read=["parity/behaviour.yaml", "legacy/backend/app.py", "legacy/frontend/index.html", "parity/e2e/tests/helpers.js"],
-        check=ai.Check(f'"{sys.executable}" -m modernize lock', "modernize lock"),
+        check=ai.Check(f'"{sys.executable}" -m modernize lock --no-commit', "modernize lock"),
     )
+    if passed:
+        from .lock import commit_lock
+
+        sha = commit_lock(cfg)
+        ok("Contract locked" + (f"  [dim]({sha})[/dim]" if sha else ""))
     _exit(passed)
 
 

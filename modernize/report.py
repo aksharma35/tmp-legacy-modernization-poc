@@ -90,9 +90,11 @@ def build_report(cfg: Config) -> Path:
         ("Backend: Python 2.7 → 3.12", api_ok,
          f"{len(api['passed'])} of {len(api['passed']) + len(api['failed'])} API cases match the legacy recording" if api else "not verified yet"),
     ]
-    for t, label in (("modern", "Frontend: React 19 app"), ("hybrid", "Hybrid: React inside AngularJS")):
+    for t, label in (("modern", "Frontend: AngularJS → React 19"), ("hybrid", "Optional: React inside AngularJS")):
         s = e2e[t]
         total = s["passed"] + s["failed"]
+        if t == "hybrid" and not total:
+            continue  # the bridge is optional; only report it when it was run
         rows.append((label, total and not s["failed"], f"{s['passed']} of {total} browser tests pass" if total else "not verified yet"))
     L += ["| Part | Status | Evidence |", "|---|---|---|"]
     for label, good, evidence in rows:
@@ -104,10 +106,16 @@ def build_report(cfg: Config) -> Path:
               f"Recorded from the running legacy app before any code changed: **{lock['api_cases']} API cases "
               f"({lock['api_requests']} requests)** and **{lock['browser_tests']} browser tests** "
               "(`parity/api/golden/`, `parity/e2e/tests/`).", ""]
+        if "behaviours" in lock:
+            L += [f"- Every one of the {lock['behaviours']} behaviours in `parity/behaviour.yaml` has at least one passing test.",
+                  f"- Every one of the {len(lock['risky_lines'])} risky backend lines found by discover "
+                  f"({', '.join(x.split(':')[-1] for x in lock['risky_lines'])} in legacy/backend/app.py) is executed by an API case.", ""]
 
     if plan:
         b = plan["backend"]
         L += ["## What discovery found", "",
+              f"- Dependencies: {len(plan['dependencies']['packages'])} packages, all with a Python {plan['dependencies']['python']} release."
+              if plan.get("dependencies", {}).get("ok") else "- Dependencies: not checked.",
               f"- Backend: {b['syntax']} syntax changes, {b['runtime']} runtime breaks, {b['semantic']} silent behaviour risks.",
               f"- Frontend: {len(plan['frontend']['units'])} AngularJS units, {plan['frontend']['semantic']} behaviours flagged to preserve.",
               "", "Full list: `migration/PLAN.md`.", ""]
@@ -180,8 +188,6 @@ def build_report(cfg: Config) -> Path:
         if ch["decision"] == "accept-new":
             follow.append(f"`{ch['field']}` now behaves differently from the legacy app. Tell the API's consumers.")
     follow += [f"Unresolved `MODERNIZE-REVIEW` note at {r}." for r in review_left]
-    if plan and not e2e["hybrid"]["passed"]:
-        follow.append("Hybrid rollout not tried yet (`modernize bridge`).")
     follow.append("Retire the legacy Python 2.7 container once the new backend is live.")
     L += [f"- {f}" for f in follow] + [""]
 
