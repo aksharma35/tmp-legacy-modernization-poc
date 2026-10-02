@@ -19,6 +19,8 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from rich.markup import escape
+
 from . import gitutil
 from .config import Config
 from .ui import console, fail, info, ok, warn
@@ -118,9 +120,22 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
-def _out_of_scope(cfg: Config, allowed: list[str]) -> list[str]:
+def _snapshot(cfg: Config) -> dict[str, str]:
+    """Uncommitted files and a hash of their content, to see exactly what an attempt changed."""
+    import hashlib
+
+    snap = {}
+    for f in gitutil.changed_files(cfg.root):
+        path = cfg.root / f
+        snap[f] = hashlib.sha1(path.read_bytes()).hexdigest() if path.is_file() else "<deleted>"
+    return snap
+
+
+def _out_of_scope(cfg: Config, before: dict[str, str], allowed: list[str]) -> list[str]:
+    """Files this attempt changed outside the allowed list (earlier, unrelated changes are left alone)."""
     allowed_set = {a.rstrip("/") for a in allowed}
-    return [f for f in gitutil.changed_files(cfg.root) if f not in allowed_set]
+    after = _snapshot(cfg)
+    return [f for f, h in after.items() if f not in allowed_set and before.get(f) != h]
 
 
 def edit_until_green(cfg: Config, *, unit: str, prompt: str, files: list[str], read: list[str], check: Check) -> bool:
@@ -146,19 +161,20 @@ def edit_until_green(cfg: Config, *, unit: str, prompt: str, files: list[str], r
         ]
         if session:
             args += ["--resume", session]
+        before = _snapshot(cfg)
         try:
             data = _call(cfg, args, message)
         except RuntimeError as exc:
-            fail(str(exc))
+            fail(escape(str(exc)))
             data = {}
         session = data.get("session_id") or session
         summary = str(data.get("result", "")).strip()
         if summary:
-            console.print(f"[magenta]Claude:[/magenta] {summary.splitlines()[0][:300]}")
+            console.print("[magenta]Claude:[/magenta] " + escape(summary.splitlines()[0][:300]))
         if data.get("total_cost_usd") is not None:
             info(f"Cost so far for {unit}: ${data['total_cost_usd']:.2f}")
 
-        stray = _out_of_scope(cfg, files)
+        stray = _out_of_scope(cfg, before, files)
         if stray:
             gitutil.discard(cfg.root, stray)
             warn(f"Discarded edits outside the allowed files: {', '.join(stray)}")
@@ -170,7 +186,7 @@ def edit_until_green(cfg: Config, *, unit: str, prompt: str, files: list[str], r
         if passed:
             ok(f"{unit}: check passes after attempt {attempt}" + (f"  [dim]({sha})[/dim]" if sha else ""))
             return True
-        fail(f"{unit}: check fails after attempt {attempt}" + (f"  [dim]({sha})[/dim]" if sha else ""))
+        fail(f"{escape(unit)}: check fails after attempt {attempt}" + (f"  [dim]({sha})[/dim]" if sha else ""))
         if not sha:
             warn("Claude made no changes in this attempt.")
         message = (

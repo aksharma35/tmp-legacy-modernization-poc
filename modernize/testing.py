@@ -73,7 +73,7 @@ def run_smoke(cfg: Config, target: str) -> bool:
         return True
     fail(f"Smoke test: {len(problems)} request(s) crashed on '{target}':")
     for p in problems:
-        console.print(f"  - {p}")
+        console.print(f"  - {p}", markup=False)
     backend = next((s for s in cfg.target(target).services if s.endswith("-api")), None)
     if backend:
         console.print(f"\n--- {backend}: last error in the server log ---")

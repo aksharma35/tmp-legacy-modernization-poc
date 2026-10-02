@@ -100,7 +100,7 @@ def lock(cfg: Config) -> bool:
     if untested:
         fail(f"3. {len(untested)} of {len(behaviours)} behaviours in parity/behaviour.yaml have no test:")
         for b in untested:
-            console.print(f"     {b['id']}  {b['text'].strip()}")
+            console.print(f"     {b['id']}  {b['text'].strip()}", markup=False)
     else:
         ok(f"3. All {len(behaviours)} behaviours in parity/behaviour.yaml have at least one passing test.")
 
@@ -110,7 +110,7 @@ def lock(cfg: Config) -> bool:
     if missed:
         fail(f"4. {len(missed)} of {len(risky)} risky backend lines found by discover are never executed by an API case:")
         for f in missed:
-            console.print(f"     {f['file']}:{f['line']}  {f['rule']}  {f['code']}")
+            console.print(f"     {f['file']}:{f['line']}  {f['rule']}  {f['code']}", markup=False)
     else:
         ok(f"4. All {len(risky)} risky backend lines found by discover are executed by the API cases.")
 

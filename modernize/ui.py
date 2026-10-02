@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
@@ -34,5 +35,5 @@ def table(title: str, columns: list[str], rows: list[list], styles: list[str] | 
     for i, c in enumerate(columns):
         t.add_column(c, style=(styles[i] if styles else None), overflow="fold")
     for r in rows:
-        t.add_row(*[str(x) for x in r])
+        t.add_row(*[x if isinstance(x, str) and x.startswith("[") and "[/" in x else escape(str(x)) for x in r])
     console.print(t)

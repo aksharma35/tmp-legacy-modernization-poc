@@ -6,6 +6,8 @@ import sys
 
 from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.markup import escape
+from rich.text import Text
 
 from . import ai, apicases, decisions, gitutil, testing
 from .config import Config
@@ -82,7 +84,7 @@ def verify_api(cfg: Config, target: str = "modern", use_ai: bool = True, decide:
         info(f"Asking the AI why ({cfg.model})…")
         try:
             explanation = ai.ask(cfg, question, read=["legacy/backend/app.py", "modern/backend/app.py"])
-            console.print(Panel(explanation, title="AI: probable cause", border_style="magenta"))
+            console.print(Panel(Text(explanation), title="AI: probable cause", border_style="magenta"))
         except (RuntimeError, SystemExit) as exc:
             warn(f"Could not get an AI explanation: {exc}")
 
@@ -96,7 +98,8 @@ def verify_api(cfg: Config, target: str = "modern", use_ai: bool = True, decide:
         elif not sys.stdin.isatty():
             raise SystemExit("verify needs a decision. Run it in a terminal, or pass --decide keep|accept.")
         else:
-            key = Prompt.ask(f"  [cyan]{sig}[/cyan]  [k]eep legacy / [a]ccept new / [s]kip", choices=list(CHOICES), default="k")
+            key = Prompt.ask(f"  [cyan]{escape(sig)}[/cyan]  \\[k]eep legacy / \\[a]ccept new / \\[s]kip",
+                             choices=list(CHOICES), default="k")
             choice = CHOICES[key]
         if choice == "skip":
             continue
@@ -164,6 +167,6 @@ def verify_e2e(cfg: Config, target: str, grep: str | None = None, headed: bool =
           [[s, p, f or "-"] for s, (p, f) in by_suite.items()])
     for t in res["tests"]:
         if t["status"] == "failed":
-            fail(f"{t['suite']} › {t['title']}: {t['error']}")
+            fail(escape(f"{t['suite']} › {t['title']}: {t['error']}"))
     (ok if res["ok"] else fail)(f"{res['passed']} passed, {res['failed']} failed on '{target}'.")
     return res["ok"]
