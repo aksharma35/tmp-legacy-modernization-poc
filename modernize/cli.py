@@ -192,7 +192,7 @@ def bridge(
     unit: List[str] = typer.Option(["SummaryPanel"], "--unit", "-u", help="React units to mount inside AngularJS."),
     headed: bool = typer.Option(False, "--headed"),
 ) -> None:
-    """Phase 5: run migrated React components inside the live AngularJS page, then test it."""
+    """Optional (not in the demo): run migrated React components inside the live AngularJS page, then test it."""
     from .bridge import build_hybrid
     from .verify import verify_e2e
 
@@ -205,7 +205,7 @@ def bridge(
 
 @app.command()
 def report() -> None:
-    """Phase 6: write migration/REPORT.md from the pipeline's records."""
+    """Phase 5: write migration/REPORT.md from the pipeline's records."""
     from .report import build_report
 
     cfg = Config()
