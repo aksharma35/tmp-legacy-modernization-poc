@@ -14,7 +14,7 @@ paths:
 services:
   legacy-api:
     # Python 2.7 runs in Docker. To use a local Python 2.7 instead, set
-    # MODERNIZE_LEGACY_API_START (see README, "Running without Docker").
+    # MODERNIZE_LEGACY_PYTHON=/path/to/python2.7 (see README, "Other setups").
     start: docker compose up -d --build legacy-api
     stop: docker compose stop legacy-api
     detached: true
