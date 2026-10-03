@@ -1,0 +1,6 @@
+# Decisions made by people during the migration. The pipeline never makes these on its own.
+plan:
+  approved: true
+  by: Claude (build session)
+  at: '2026-10-03T04:54:10+00:00'
+behaviour_changes: []
