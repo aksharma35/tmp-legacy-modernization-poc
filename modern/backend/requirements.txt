@@ -1,7 +1,8 @@
-# Last versions that support Python 2.7 -- pinned so every run is identical.
-Flask==1.1.4
-Werkzeug==1.0.1
-Jinja2==2.11.3
-MarkupSafe==1.1.1
-itsdangerous==1.1.0
-click==7.1.2
+# Resolved for Python 3.12 by `modernize discover` (uv pip compile)
+blinker==1.9.0
+click==8.5.0
+flask==3.1.3
+itsdangerous==2.2.0
+jinja2==3.1.6
+markupsafe==3.0.4
+werkzeug==3.1.9

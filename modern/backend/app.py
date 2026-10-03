@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Expense Tracker API -- legacy service (Python 2.7, Flask 1.x).
 
@@ -10,6 +9,7 @@ import os
 from datetime import datetime
 
 from flask import Flask, jsonify, request, send_from_directory
+from functools import cmp_to_key
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(HERE, '..', 'frontend')
@@ -30,7 +30,7 @@ def load_seed():
 def reset_store():
     global _expenses
     _expenses = load_seed()
-    print "[expenses] store reset, %d expenses loaded" % len(_expenses)
+    print("[expenses] store reset, %d expenses loaded" % len(_expenses))
 
 
 def next_id():
@@ -45,11 +45,11 @@ def validate_expense(payload):
         return None, 'request body must be a JSON object'
 
     title = payload.get('title')
-    if not isinstance(title, basestring) or not title.strip():
+    if not isinstance(title, str) or not title.strip():
         return None, 'title is required'
 
     amount = payload.get('amount')
-    if isinstance(amount, bool) or not isinstance(amount, (int, long)) or amount < 1:
+    if isinstance(amount, bool) or not isinstance(amount, int) or amount < 1:
         return None, 'amount must be a positive whole number'
 
     category = payload.get('category')
@@ -59,7 +59,7 @@ def validate_expense(payload):
     date = payload.get('date')
     try:
         datetime.strptime(date or '', '%Y-%m-%d')
-    except ValueError, e:
+    except ValueError as e:
         return None, 'date must be YYYY-MM-DD'
 
     return {
@@ -79,17 +79,17 @@ def build_summary(expenses):
     counts = {}
     for e in expenses:
         cat = e['category']
-        if not totals.has_key(cat):
+        if cat not in totals:
             totals[cat] = 0
             counts[cat] = 0
         totals[cat] += e['amount']
         counts[cat] += 1
 
-    grand_total = sum(totals.itervalues())
+    grand_total = sum(totals.values())
     count = len(expenses)
 
     rows = []
-    for cat, total in totals.iteritems():
+    for cat, total in totals.items():
         rows.append({
             'category': cat,
             'total': total,
@@ -104,7 +104,7 @@ def build_summary(expenses):
         'total': grand_total,
         'count': count,
         'average': grand_total / count if count else 0,
-        'by_category': sorted(rows, cmp=by_total_desc),
+        'by_category': sorted(rows, key=cmp_to_key(by_total_desc)),
     }
 
 
@@ -123,13 +123,13 @@ def add_expense():
         return jsonify({'error': error}), 400
     clean['id'] = next_id()
     _expenses.append(clean)
-    print "[expenses] added #%d %s" % (clean['id'], clean['title'].encode('utf-8'))
+    print("[expenses] added #%d %s" % (clean['id'], clean['title'].encode('utf-8')))
     return jsonify(clean), 201
 
 
 @app.route('/api/expenses/<int:expense_id>', methods=['DELETE'])
 def delete_expense(expense_id):
-    for i in xrange(len(_expenses)):
+    for i in range(len(_expenses)):
         if _expenses[i]['id'] == expense_id:
             del _expenses[i]
             return '', 204
@@ -165,5 +165,5 @@ def static_files(filename):
 if __name__ == '__main__':
     reset_store()
     port = int(os.environ.get('PORT', '5001'))
-    print "[expenses] legacy API listening on http://0.0.0.0:%d" % port
+    print("[expenses] legacy API listening on http://0.0.0.0:%d" % port)
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)

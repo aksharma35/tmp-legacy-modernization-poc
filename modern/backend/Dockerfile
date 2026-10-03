@@ -1,6 +1,5 @@
-# Legacy runtime: Python 2.7 (end-of-life since 2020). The official image is
-# deprecated but still available on Docker Hub, so we pin it by tag.
-FROM python:2.7.18-slim
+# Modern runtime: Python 3.12.
+FROM python:3.12-slim
 
 WORKDIR /app/backend
 COPY backend/requirements.txt /tmp/requirements.txt
