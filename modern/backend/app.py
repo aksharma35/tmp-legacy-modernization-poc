@@ -5,6 +5,7 @@ Serves the AngularJS frontend from ../frontend and a small JSON API under /api.
 Data lives in memory and is seeded from data/expenses.json on startup.
 """
 import json
+import math
 import os
 from datetime import datetime
 
@@ -70,6 +71,11 @@ def validate_expense(payload):
     }, None
 
 
+def py2_round(value):
+    """round() as Python 2 did it: halves away from zero, result is a float."""
+    return float(math.floor(value + 0.5)) if value >= 0 else float(math.ceil(value - 0.5))
+
+
 def by_total_desc(a, b):
     # Python 3 has no cmp(); this returns the same -1 / 0 / 1.
     return (b['total'] > a['total']) - (b['total'] < a['total'])
@@ -96,19 +102,18 @@ def build_summary(expenses):
             'total': total,
             'count': counts[cat],
             # average spend per expense in this category
-            # MODERNIZE-REVIEW: Python 2 `/` on two ints truncated (833); Python 3 returns a float (833.33).
-            'average': total / counts[cat],
+            # Kept legacy Python 2 behaviour on purpose: integer division (see migration/decisions.yaml).
+            'average': total // counts[cat],
             # share of all spending, as a whole percentage
-            # MODERNIZE-REVIEW: Python 2 round() returned a float and rounded .5 up (12.5 -> 13.0);
-            # Python 3 returns an int and rounds .5 to even (12.5 -> 12).
-            'share_percent': round(total * 100.0 / grand_total) if grand_total else 0,
+            # Kept legacy Python 2 behaviour on purpose: round half away from zero (see migration/decisions.yaml).
+            'share_percent': py2_round(total * 100.0 / grand_total) if grand_total else 0,
         })
 
     return {
         'total': grand_total,
         'count': count,
-        # MODERNIZE-REVIEW: Python 2 `/` on two ints truncated; Python 3 returns a float.
-        'average': grand_total / count if count else 0,
+        # Kept legacy Python 2 behaviour on purpose: integer division (see migration/decisions.yaml).
+        'average': grand_total // count if count else 0,
         'by_category': sorted(rows, key=cmp_to_key(by_total_desc)),
     }
 
