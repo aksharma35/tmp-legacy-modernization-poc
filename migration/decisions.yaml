@@ -3,4 +3,44 @@ plan:
   approved: true
   by: Claude (build session)
   at: '2026-10-03T04:54:10+00:00'
-behaviour_changes: []
+behaviour_changes:
+- field: GET /api/summary  average
+  values_changed: 2
+  example:
+    case: summary
+    legacy: 727
+    new: 727.2727272727273
+  decision: keep-legacy
+  decided_by: Claude (build session)
+  at: '2026-10-03T04:54:35+00:00'
+- field: GET /api/summary  by_category[*].average
+  values_changed: 10
+  example:
+    case: summary
+    legacy: 833
+    new: 833.3333333333334
+  decision: keep-legacy
+  decided_by: Claude (build session)
+  at: '2026-10-03T04:54:35+00:00'
+- field: GET /api/summary  by_category[*].share_percent
+  values_changed: 1
+  example:
+    case: summary
+    legacy: 13.0
+    new: 12
+  decision: keep-legacy
+  decided_by: Claude (build session)
+  at: '2026-10-03T04:54:35+00:00'
+ai_explanations:
+- at: '2026-10-03T04:54:35+00:00'
+  model: claude-sonnet-5
+  fields:
+  - GET /api/summary  average
+  - GET /api/summary  by_category[*].average
+  - GET /api/summary  by_category[*].share_percent
+  text: 'average fields: `total / counts[cat]` and `grand_total / count` in build_summary. In Python 2,
+    `/` between two integers truncates (2500 / 3 = 833); in Python 3 it is true division and returns 833.33.
+
+    share_percent: `round(total * 100.0 / grand_total)`. Python 2''s round() rounds .5 away from zero
+    and returns a float (12.5 -> 13.0); Python 3 rounds .5 to the nearest even number and returns an int
+    (12.5 -> 12).'
