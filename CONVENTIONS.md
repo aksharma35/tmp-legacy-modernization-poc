@@ -22,7 +22,7 @@ the AI works under.
 
 ## Backend: Python 2.7 → Python 3.12
 
-- 2to3 and ruff have already rewritten the syntax. Your job is what they could
+- fissix (2to3's fixers) and ruff have already rewritten the syntax. Your job is what they could
   not do: code that still crashes or cannot run on Python 3.12.
 - Replace `cmp`-style sorting with `key=` functions that produce the same order.
 - Log lines must print text, not `b'...'` bytes.

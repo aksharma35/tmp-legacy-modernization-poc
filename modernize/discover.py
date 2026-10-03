@@ -403,7 +403,7 @@ def plan_markdown(plan: dict) -> str:
         "",
         "| What | Count | Handled by |",
         "|---|---|---|",
-        f"| Syntax changes | {b['syntax']} | codemods (2to3, ruff) |",
+        f"| Syntax changes | {b['syntax']} | codemods (fissix, ruff) |",
         f"| Runtime breaks the codemods leave behind | {b['runtime']} | AI (Claude Code), checked by smoke tests |",
         f"| Silent behaviour changes | {b['semantic']} | parity tests catch them, a human decides |",
         "",

@@ -53,12 +53,12 @@ def doctor(cfg: Config, live: bool = False) -> bool:
 
     py = sys.version_info
     try:
-        import lib2to3  # noqa: F401
-        has_2to3 = True
+        import fissix  # noqa: F401
+        has_fissix = True
     except ImportError:
-        has_2to3 = False
-    check("Python 3.12 (runs 2to3)", py[:2] == (3, 12) and has_2to3, f"{py.major}.{py.minor}.{py.micro}",
-          "uv venv --python 3.12 .venv && uv pip install -e .")
+        has_fissix = False
+    check("Python 3.12+ with fissix", py[:2] >= (3, 12) and has_fissix, f"{py.major}.{py.minor}.{py.micro}",
+          "uv venv --python 3.13 .venv && uv pip install -e .")
 
     code, out = _run(["git", "--version"])
     check("git", code == 0, out or "not found", "Install git")

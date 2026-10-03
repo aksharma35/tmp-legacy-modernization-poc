@@ -67,8 +67,6 @@ def transform_backend(cfg: Config, recipe: dict, use_ai: bool = True, force: boo
         proc = subprocess.run(cmd, shell=True, cwd=cfg.root, capture_output=True, text=True, encoding="utf-8")
         if proc.returncode != 0:
             fail(f"{mod['name']} failed:\n{(proc.stderr or proc.stdout)[-1500:]}")
-            if "lib2to3" in (proc.stderr or ""):
-                warn("2to3 needs Python 3.12 (it was removed in 3.13). Recreate the venv with Python 3.12.")
             return False
 
     deps = _load_plan(cfg).get("dependencies") or {}

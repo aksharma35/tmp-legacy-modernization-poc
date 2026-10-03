@@ -76,7 +76,7 @@ def discover(yes: bool = typer.Option(False, "--yes", help="Approve the plan wit
     ok(f"All {len(deps['packages'])} dependencies have a release for Python {deps['python']}.")
     b = plan["backend"]
     table("Backend · Python 2.7 → 3.12", ["Kind", "Findings", "Who handles it"], [
-        ["syntax", b["syntax"], "codemods (2to3, ruff)"],
+        ["syntax", b["syntax"], "codemods (fissix, ruff)"],
         ["runtime", b["runtime"], "AI, checked by smoke tests"],
         ["semantic", b["semantic"], "parity tests + a human"],
     ])

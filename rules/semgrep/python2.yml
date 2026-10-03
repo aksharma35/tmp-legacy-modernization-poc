@@ -1,28 +1,28 @@
 # Python 2 patterns that block or change behaviour on Python 3.
 # metadata.kind:
-#   syntax   - a codemod (2to3 / ruff) rewrites it mechanically
-#   runtime  - left alone by 2to3 and crashes on Python 3; needs a code fix
-#   semantic - left alone by 2to3 and silently changes results; a human decides
+#   syntax   - a codemod (fissix / ruff) rewrites it mechanically
+#   runtime  - left alone by the codemods and crashes on Python 3; needs a code fix
+#   semantic - left alone by the codemods and silently changes results; a human decides
 rules:
   - id: print-statement
     languages: [python2]
     severity: INFO
     message: "`print` is a statement in Python 2 and a function in Python 3."
-    metadata: { migration: python2to3, kind: syntax, fixed_by: 2to3 }
+    metadata: { migration: python2to3, kind: syntax, fixed_by: codemod }
     pattern: print $X
 
   - id: except-comma
     languages: [python2]
     severity: INFO
     message: "`except E, e:` is Python 2 syntax; Python 3 needs `except E as e:`."
-    metadata: { migration: python2to3, kind: syntax, fixed_by: 2to3 }
+    metadata: { migration: python2to3, kind: syntax, fixed_by: codemod }
     pattern-regex: 'except\s+[\w.]+\s*,\s*\w+\s*:'
 
   - id: dict-iter-methods
     languages: [python2]
     severity: INFO
     message: "`iteritems()/itervalues()/iterkeys()` were removed in Python 3."
-    metadata: { migration: python2to3, kind: syntax, fixed_by: 2to3 }
+    metadata: { migration: python2to3, kind: syntax, fixed_by: codemod }
     pattern-either:
       - pattern: $D.iteritems()
       - pattern: $D.itervalues()
@@ -32,34 +32,40 @@ rules:
     languages: [python2]
     severity: INFO
     message: "`dict.has_key()` was removed in Python 3; use `in`."
-    metadata: { migration: python2to3, kind: syntax, fixed_by: 2to3 }
+    metadata: { migration: python2to3, kind: syntax, fixed_by: codemod }
     pattern: $D.has_key($K)
 
   - id: removed-builtins
     languages: [python2]
     severity: INFO
     message: "`basestring`, `long`, `unicode` and `xrange` do not exist in Python 3."
-    metadata: { migration: python2to3, kind: syntax, fixed_by: 2to3 }
+    metadata: { migration: python2to3, kind: syntax, fixed_by: codemod }
     pattern-either:
       - pattern: basestring
       - pattern: long
       - pattern: unicode($X)
       - pattern: xrange(...)
 
-  - id: cmp-sorting
+  - id: cmp-keyword
     languages: [python2]
-    severity: ERROR
-    message: "`cmp=` and `cmp()` do not exist in Python 3, and 2to3 leaves them in place, so this crashes at runtime."
-    metadata: { migration: python2to3, kind: runtime, fixed_by: ai }
+    severity: INFO
+    message: "`sort(cmp=...)` does not exist in Python 3; the codemod wraps the function in `functools.cmp_to_key`."
+    metadata: { migration: python2to3, kind: syntax, fixed_by: codemod }
     pattern-either:
       - pattern: sorted(..., cmp=$F, ...)
       - pattern: $L.sort(..., cmp=$F, ...)
-      - pattern: cmp($A, $B)
+
+  - id: cmp-builtin
+    languages: [python2]
+    severity: ERROR
+    message: "The `cmp()` builtin does not exist in Python 3, and the codemods leave the call in place, so this crashes at runtime."
+    metadata: { migration: python2to3, kind: runtime, fixed_by: ai }
+    pattern: cmp($A, $B)
 
   - id: true-division
     languages: [python2]
     severity: WARNING
-    message: "`/` between two integers truncates in Python 2 but returns a float in Python 3. 2to3 does not change it, so results can change silently."
+    message: "`/` between two integers truncates in Python 2 but returns a float in Python 3. The codemods do not change it, so results can change silently."
     metadata: { migration: python2to3, kind: semantic, fixed_by: human }
     pattern: $A / $B
 

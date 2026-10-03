@@ -17,8 +17,8 @@ dependencies:
 
 # 1. Deterministic codemods, in order. They run on a copy in {{target}}.
 codemods:
-  - name: 2to3
-    run: '"{{python}}" -m lib2to3 --write --nobackups --no-diffs "{{target}}"'
+  - name: fissix (2to3's fixers, maintained as a separate package)
+    run: '"{{python}}" -m fissix --write --nobackups --no-diffs "{{target}}"'
   - name: ruff (pyupgrade rules, Python 3.12)
     run: '"{{ruff}}" check --fix --select UP --target-version py312 --quiet --exit-zero "{{target}}"'
 
@@ -37,7 +37,7 @@ ai:
   read: ["{{source}}/app.py"]
   check: '"{{python}}" -m modernize test smoke --target modern'
   prompt: |
-    {{target}}/app.py is a Flask API that 2to3 and ruff have just converted from
+    {{target}}/app.py is a Flask API that fissix and ruff have just converted from
     Python 2.7 to Python 3. The original is {{source}}/app.py (read-only).
 
     Make it run correctly on Python 3.12 with Flask 3.1. The check replays
