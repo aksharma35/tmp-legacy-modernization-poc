@@ -1,0 +1,12 @@
+{
+  "case": "add_non_json_body",
+  "steps": [
+    {
+      "request": "POST /api/expenses",
+      "status": 400,
+      "body": {
+        "error": "request body must be a JSON object"
+      }
+    }
+  ]
+}

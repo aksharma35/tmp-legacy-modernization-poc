@@ -1,0 +1,145 @@
+{
+  "case": "add_valid_then_summary",
+  "steps": [
+    {
+      "request": "POST /api/expenses",
+      "status": 201,
+      "body": {
+        "amount": 350,
+        "category": "Travel",
+        "date": "2026-09-27",
+        "id": 12,
+        "title": "Taxi home"
+      }
+    },
+    {
+      "request": "GET /api/expenses",
+      "status": 200,
+      "body": [
+        {
+          "amount": 400,
+          "category": "Food",
+          "date": "2026-09-02",
+          "id": 1,
+          "title": "Groceries - Big Bazaar"
+        },
+        {
+          "amount": 300,
+          "category": "Food",
+          "date": "2026-09-05",
+          "id": 2,
+          "title": "Team lunch"
+        },
+        {
+          "amount": 200,
+          "category": "Food",
+          "date": "2026-09-11",
+          "id": 3,
+          "title": "Coffee beans"
+        },
+        {
+          "amount": 100,
+          "category": "Food",
+          "date": "2026-09-19",
+          "id": 4,
+          "title": "Street food"
+        },
+        {
+          "amount": 1200,
+          "category": "Travel",
+          "date": "2026-09-03",
+          "id": 5,
+          "title": "Cab to airport"
+        },
+        {
+          "amount": 850,
+          "category": "Travel",
+          "date": "2026-09-12",
+          "id": 6,
+          "title": "Train tickets"
+        },
+        {
+          "amount": 450,
+          "category": "Travel",
+          "date": "2026-09-21",
+          "id": 7,
+          "title": "Metro card top-up"
+        },
+        {
+          "amount": 1500,
+          "category": "Bills",
+          "date": "2026-09-01",
+          "id": 8,
+          "title": "Electricity bill"
+        },
+        {
+          "amount": 999,
+          "category": "Bills",
+          "date": "2026-09-15",
+          "id": 9,
+          "title": "Mobile recharge"
+        },
+        {
+          "amount": 1400,
+          "category": "Shopping",
+          "date": "2026-09-08",
+          "id": 10,
+          "title": "Running shoes"
+        },
+        {
+          "amount": 601,
+          "category": "Shopping",
+          "date": "2026-09-24",
+          "id": 11,
+          "title": "Phone case"
+        },
+        {
+          "amount": 350,
+          "category": "Travel",
+          "date": "2026-09-27",
+          "id": 12,
+          "title": "Taxi home"
+        }
+      ]
+    },
+    {
+      "request": "GET /api/summary",
+      "status": 200,
+      "body": {
+        "average": 695,
+        "by_category": [
+          {
+            "average": 712,
+            "category": "Travel",
+            "count": 4,
+            "share_percent": 34.0,
+            "total": 2850
+          },
+          {
+            "average": 1249,
+            "category": "Bills",
+            "count": 2,
+            "share_percent": 30.0,
+            "total": 2499
+          },
+          {
+            "average": 1000,
+            "category": "Shopping",
+            "count": 2,
+            "share_percent": 24.0,
+            "total": 2001
+          },
+          {
+            "average": 250,
+            "category": "Food",
+            "count": 4,
+            "share_percent": 12.0,
+            "total": 1000
+          }
+        ],
+        "count": 12,
+        "total": 8350
+      }
+    }
+  ]
+}

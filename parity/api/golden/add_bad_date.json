@@ -1,0 +1,12 @@
+{
+  "case": "add_bad_date",
+  "steps": [
+    {
+      "request": "POST /api/expenses",
+      "status": 400,
+      "body": {
+        "error": "date must be YYYY-MM-DD"
+      }
+    }
+  ]
+}

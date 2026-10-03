@@ -1,0 +1,12 @@
+{
+  "case": "add_missing_title",
+  "steps": [
+    {
+      "request": "POST /api/expenses",
+      "status": 400,
+      "body": {
+        "error": "title is required"
+      }
+    }
+  ]
+}

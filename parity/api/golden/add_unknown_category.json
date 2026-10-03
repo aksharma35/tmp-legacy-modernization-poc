@@ -1,0 +1,12 @@
+{
+  "case": "add_unknown_category",
+  "steps": [
+    {
+      "request": "POST /api/expenses",
+      "status": 400,
+      "body": {
+        "error": "category must be one of: Food, Travel, Bills, Shopping"
+      }
+    }
+  ]
+}

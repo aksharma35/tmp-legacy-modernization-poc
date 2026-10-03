@@ -1,0 +1,12 @@
+{
+  "case": "delete_missing",
+  "steps": [
+    {
+      "request": "DELETE /api/expenses/999",
+      "status": 404,
+      "body": {
+        "error": "expense 999 not found"
+      }
+    }
+  ]
+}

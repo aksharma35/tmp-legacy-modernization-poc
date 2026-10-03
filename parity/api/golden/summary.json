@@ -1,0 +1,44 @@
+{
+  "case": "summary",
+  "steps": [
+    {
+      "request": "GET /api/summary",
+      "status": 200,
+      "body": {
+        "average": 727,
+        "by_category": [
+          {
+            "average": 833,
+            "category": "Travel",
+            "count": 3,
+            "share_percent": 31.0,
+            "total": 2500
+          },
+          {
+            "average": 1249,
+            "category": "Bills",
+            "count": 2,
+            "share_percent": 31.0,
+            "total": 2499
+          },
+          {
+            "average": 1000,
+            "category": "Shopping",
+            "count": 2,
+            "share_percent": 25.0,
+            "total": 2001
+          },
+          {
+            "average": 250,
+            "category": "Food",
+            "count": 4,
+            "share_percent": 13.0,
+            "total": 1000
+          }
+        ],
+        "count": 11,
+        "total": 8000
+      }
+    }
+  ]
+}

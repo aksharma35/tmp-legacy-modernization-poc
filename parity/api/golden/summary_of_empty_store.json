@@ -1,0 +1,70 @@
+{
+  "case": "summary_of_empty_store",
+  "steps": [
+    {
+      "request": "DELETE /api/expenses/1",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/2",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/3",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/4",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/5",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/6",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/7",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/8",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/9",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/10",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "DELETE /api/expenses/11",
+      "status": 204,
+      "body": null
+    },
+    {
+      "request": "GET /api/summary",
+      "status": 200,
+      "body": {
+        "average": 0,
+        "by_category": [],
+        "count": 0,
+        "total": 0
+      }
+    }
+  ]
+}
