@@ -12,7 +12,7 @@ That covers the two kinds of legacy work:
 Both run through one pipeline, `modernize`:
 
 - **Open-source tools do the bulk.** uv checks every dependency has a Python 3 release. Semgrep
-  finds what must change. 2to3 and ruff rewrite the syntax. Playwright and pytest record how the
+  finds what must change. fissix (2to3's fixers) and ruff rewrite the syntax. Playwright and pytest record how the
   old app behaves.
 - **Claude Code fills the gaps.** It runs headless (`claude -p`), may only read and edit the files
   a step names, and cannot run commands. The pipeline runs the checks and owns the retry loop.
@@ -23,7 +23,7 @@ Both run through one pipeline, `modernize`:
 |---|---|---|---|
 | 1 | `modernize discover` | **Dependency gate:** every legacy package must have a release for Python 3.12, or the pipeline stops here. Then Semgrep lists outdated patterns and extracts a spec per AngularJS unit. You approve the plan. | No |
 | 2 | `modernize lock` | Records 13 API cases from the running Python 2.7 API and runs 13 browser tests on the AngularJS app. Then **proves the tests are enough**: every behaviour in `parity/behaviour.yaml` has a test, and every risky line from step 1 is executed by a test. | No |
-| 3 | `modernize transform -r python2to3` | Copies the backend, pins the resolved dependencies, runs 2to3 and ruff, then a smoke test. The codemod output crashes (`cmp=`), so Claude Code fixes it. | Yes, for leftovers only |
+| 3 | `modernize transform -r python2to3` | Copies the backend, pins the resolved dependencies, runs fissix and ruff, then a smoke test. The codemod output crashes (`cmp()` no longer exists), so Claude Code fixes it. | Yes, for leftovers only |
 | 4 | `modernize verify --suite api` | Replays the contract. The code runs, but **results changed** (integer division, `round()`). Claude explains why. **You** choose *keep legacy* or *accept new*, and Claude Code applies your decision. | Explains and fixes; you decide |
 | 5 | `modernize transform -r angularjs-react` | Scaffolds React. Claude Code migrates one unit at a time; each unit's browser tests are its finish line. | Yes |
 | 6 | `modernize verify --suite e2e` | The same 13 browser tests, now against React. | No |
@@ -53,7 +53,7 @@ Desktop with "WSL integration" turned on. Native Windows has not been tested.
 | git | Every pipeline step is a commit | `brew install git` / `sudo apt install git` |
 | Docker Desktop | Runs the Python 2.7 backend (end-of-life, don't install it natively) | docker.com |
 | Node.js **22 LTS** (≥ 20.19) | Vite 8, React, Playwright, Claude Code | nodejs.org or `brew install node@22` |
-| [uv](https://docs.astral.sh/uv/) | Gets Python 3.12, installs the tools, runs the dependency gate | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| [uv](https://docs.astral.sh/uv/) | Gets Python, installs the tools, runs the dependency gate | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Claude Code | The AI steps | `npm install -g @anthropic-ai/claude-code` |
 | A Claude API key | Claude Code runs in bare mode, which uses an API key, not a subscription login | console.anthropic.com. **Set a low monthly spend limit.** |
 
@@ -63,8 +63,8 @@ Then:
 git clone https://github.com/aksharma35/tmp-legacy-modernization-poc.git
 cd tmp-legacy-modernization-poc
 
-# The tooling runs on Python 3.12 exactly: 2to3 was deprecated in 3.11 and removed in 3.13.
-uv venv --python 3.12 .venv
+# Python 3.12 or newer (tested on 3.12 and 3.13).
+uv venv --python 3.13 .venv
 source .venv/bin/activate
 uv pip install -e .
 
@@ -168,7 +168,6 @@ docs/FEASIBILITY.md   What was verified before handing this over, and what was n
 
 | Symptom | Fix |
 |---|---|
-| `2to3 needs Python 3.12` | The venv was made with 3.13+. Run `rm -rf .venv && uv venv --python 3.12 .venv`, then reinstall. |
 | `discover` stops at the dependency table | A package has no Python 3.12 release. Replace or upgrade it in `legacy/backend/requirements.txt` first. |
 | `lock` says "Not locked" | Add the missing tests it lists, or run `modernize draft-tests`. |
 | Legacy API does not start | `docker compose logs legacy-api`. The first build pulls `python:2.7.18-slim`. |

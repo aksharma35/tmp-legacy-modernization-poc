@@ -9,9 +9,11 @@ laptop first.
 - Ubuntu 24.04, 2 CPUs, 7 GB RAM. No GPU.
 - **Python 2.7.18**, compiled from the official CPython source, with Flask 1.1.4 and the pinned
   dependencies from `legacy/backend/requirements.txt`.
-- **Python 3.12.11** (via uv): Flask 3.1.3, Semgrep 1.178.0, ruff 0.16.9, and 2to3 from the
-  Python 3.12 standard library. 2to3 was deprecated in Python 3.11 and removed in 3.13, so the
-  tooling is pinned to 3.12.
+- **Python 3.12.11 and 3.13.7** (via uv), one full run each: Flask 3.1.3, Semgrep 1.178.0,
+  ruff 0.16.9 and fissix 24.4.24. fissix packages 2to3's fixers separately, so the tooling is not
+  tied to the stdlib 2to3 that was deprecated in Python 3.11 and removed in 3.13. Its output
+  matched the stdlib 2to3, plus one extra fix (`sort(cmp=...)` → `cmp_to_key`). It also ran on
+  Python 3.14 (a pre-release build).
 - **uv 0.8** for the dependency gate (`uv pip compile --python-version 3.12`).
 - **Node 22.22**: React 19.3.0, Vite 8.3.1, Playwright 1.56.1 (Chromium 141).
 - **Claude Code 2.1.287**, run headless: `claude --bare -p`, with only the Read and Edit tools,
@@ -23,9 +25,9 @@ A fresh clone ran every step in order, several times. The last run is the `refer
 
 | Step | Result | Time here* |
 |---|---|---|
-| `discover` | 6 of 6 dependencies resolve for Python 3.12 (Flask 1.1.4 → 3.1.3 …). 17 backend findings (10 syntax, 2 runtime, 5 semantic). 4 AngularJS units extracted by Semgrep, in dependency order. | 5 s |
-| `lock` | 13 API cases / 28 requests recorded from the **real Python 2.7** API and replayed identically. 13/13 browser tests pass on AngularJS. All 15 behaviours have a test. All 6 risky lines (74, 98, 100, 106, 107, 126) are executed by an API case. | 14 s |
-| `transform -r python2to3` | Resolved pins written; 2to3 + ruff change 3 files. Smoke test **crashes** (`cmp=`). Claude Code attempt 1 fails the check, attempt 2 passes. | 11 s |
+| `discover` | 6 of 6 dependencies resolve for Python 3.12 (Flask 1.1.4 → 3.1.3 …). 17 backend findings (11 syntax, 1 runtime, 5 semantic). 4 AngularJS units extracted by Semgrep, in dependency order. | 5 s |
+| `lock` | 13 API cases / 28 requests recorded from the **real Python 2.7** API and replayed identically. 13/13 browser tests pass on AngularJS. All 15 behaviours have a test. All 5 risky lines (74, 98, 100, 106, 126) are executed by an API case. | 14 s |
+| `transform -r python2to3` | Resolved pins written; fissix + ruff change 3 files. Smoke test **crashes** (`NameError: name 'cmp' is not defined`). Claude Code fixes it in 1 attempt. | 8 s |
 | `verify --suite api` | **13 values differ in 3 fields, with no crash** (integer division, `round()`). Claude explains; keep-legacy is recorded; Claude Code applies it in 1 attempt; 13/13 API cases pass. | 13 s |
 | `transform -r angularjs-react` | Scaffold + 4 units, each passing its own tagged browser tests in 1 attempt. | 38 s |
 | `verify --suite e2e` | 13/13 browser tests pass on React, in a US time zone on purpose (catches UTC date bugs). | 15 s |
