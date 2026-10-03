@@ -71,7 +71,8 @@ def validate_expense(payload):
 
 
 def by_total_desc(a, b):
-    return cmp(b['total'], a['total'])
+    # Python 3 has no cmp(); this returns the same -1 / 0 / 1.
+    return (b['total'] > a['total']) - (b['total'] < a['total'])
 
 
 def build_summary(expenses):
@@ -95,14 +96,18 @@ def build_summary(expenses):
             'total': total,
             'count': counts[cat],
             # average spend per expense in this category
+            # MODERNIZE-REVIEW: Python 2 `/` on two ints truncated (833); Python 3 returns a float (833.33).
             'average': total / counts[cat],
             # share of all spending, as a whole percentage
+            # MODERNIZE-REVIEW: Python 2 round() returned a float and rounded .5 up (12.5 -> 13.0);
+            # Python 3 returns an int and rounds .5 to even (12.5 -> 12).
             'share_percent': round(total * 100.0 / grand_total) if grand_total else 0,
         })
 
     return {
         'total': grand_total,
         'count': count,
+        # MODERNIZE-REVIEW: Python 2 `/` on two ints truncated; Python 3 returns a float.
         'average': grand_total / count if count else 0,
         'by_category': sorted(rows, key=cmp_to_key(by_total_desc)),
     }
@@ -123,7 +128,7 @@ def add_expense():
         return jsonify({'error': error}), 400
     clean['id'] = next_id()
     _expenses.append(clean)
-    print("[expenses] added #%d %s" % (clean['id'], clean['title'].encode('utf-8')))
+    print("[expenses] added #%d %s" % (clean['id'], clean['title']))
     return jsonify(clean), 201
 
 
